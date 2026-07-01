@@ -29,5 +29,3 @@ RUN composer install --no-dev --optimize-autoloader
 # Set permissions for Laravel storage
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Run migrations automatically when the container starts
-CMD php artisan migrate --force && apache2-foreground
