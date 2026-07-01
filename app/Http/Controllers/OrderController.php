@@ -42,7 +42,7 @@ class OrderController extends Controller
             $table = null;
             if ($request->filled('table_id')) {
                 $table = Table::findOrFail($request->table_id);
-                if ($table->status !== 'available') {
+                if (!$request->filled('append_to_order_id') && $table->status !== 'available') {
                     return response()->json([
                         'success' => false,
                         'message' => "Table {$table->table_number} is already occupied.",
@@ -50,25 +50,43 @@ class OrderController extends Controller
                 }
             }
 
+            if ($request->filled('append_to_order_id')) {
+                $order = Order::findOrFail($request->append_to_order_id);
+                if ($order->payment_status === 'paid') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Order #{$order->id} has already been paid/completed.",
+                    ], 400);
+                }
 
+                // If order status was 'ready', set it back to 'preparing' to alert the kitchen
+                if ($order->status === 'ready') {
+                    $order->status = 'preparing';
+                }
 
-            // Create the order with customer details
-            $order = Order::create([
-                'customer_name' => $request->customer_name,
-                'contact_number' => $request->contact_number,
-                'total_amount' => 0.00,
-                'status' => 'pending',
-                'payment_status' => 'unpaid',
-                'table_id' => $request->table_id,
-                'special_instructions' => $request->special_instructions,
-            ]);
+                // Append any new special instructions
+                if ($request->filled('special_instructions')) {
+                    $order->special_instructions = trim(($order->special_instructions ?? '') . "\n[Add-on]: " . $request->special_instructions);
+                }
+            } else {
+                // Create the order with customer details
+                $order = Order::create([
+                    'customer_name' => $request->customer_name,
+                    'contact_number' => $request->contact_number,
+                    'total_amount' => 0.00,
+                    'status' => 'pending',
+                    'payment_status' => 'unpaid',
+                    'table_id' => $request->table_id,
+                    'special_instructions' => $request->special_instructions,
+                ]);
 
-            // Mark table occupied
-            if ($table) {
-                $table->update(['status' => 'occupied']);
+                // Mark table occupied
+                if ($table) {
+                    $table->update(['status' => 'occupied']);
+                }
             }
 
-            $totalAmount = 0.00;
+            $totalAmount = $request->filled('append_to_order_id') ? (float) $order->total_amount : 0.00;
 
             // Iterate over items to save them and calculate total amount based on DB prices
             foreach ($request->items as $itemData) {
@@ -95,10 +113,9 @@ class OrderController extends Controller
                 ]);
             }
 
-
-
-            // Update order total amount
-            $order->update(['total_amount' => $totalAmount]);
+            // Update order total amount and save other dirty attributes (like status/instructions)
+            $order->total_amount = $totalAmount;
+            $order->save();
 
             DB::commit();
 
@@ -229,5 +246,54 @@ class OrderController extends Controller
                 'message' => 'Failed to update order status. Please try again.',
             ], 500);
         }
+    }
+
+    /**
+     * Look up a customer name by contact number.
+     */
+    public function lookupCustomer(Request $request)
+    {
+        $request->validate([
+            'phone' => 'required|string',
+        ]);
+
+        $customer = Order::where('contact_number', $request->phone)
+            ->whereNotNull('customer_name')
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($customer) {
+            return response()->json([
+                'success' => true,
+                'name' => $customer->customer_name,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Customer not found',
+        ]);
+    }
+
+    /**
+     * Get the active order for a given table.
+     */
+    public function getActiveOrderByTable(Table $table)
+    {
+        $activeOrder = Order::where('table_id', $table->id)
+            ->where('payment_status', '!=', 'paid')
+            ->first();
+
+        if ($activeOrder) {
+            return response()->json([
+                'success' => true,
+                'order' => $activeOrder,
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'No active order found for this table.',
+        ]);
     }
 }

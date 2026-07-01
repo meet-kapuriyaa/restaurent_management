@@ -380,6 +380,7 @@
                             
                             <!-- Hidden Table ID Input -->
                             <input type="hidden" name="table_id" id="selectedTableId" value="" required>
+                            <input type="hidden" name="append_to_order_id" id="appendToOrderId" value="">
                             <div id="table-error-container"></div>
                             
                             <div class="row row-cols-3 g-2 mt-2" id="table-grid">
@@ -737,11 +738,65 @@
                 const number = $(this).data('number');
 
                 if (status === 'occupied') {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: 'Table Occupied',
-                        text: `Table ${number} is currently occupied. Please choose an available table.`,
-                        confirmButtonColor: '#e0a800'
+                    // Fetch active order details for this table
+                    $.ajax({
+                        url: `/orders/active-by-table/${id}`,
+                        type: 'GET',
+                        success: function(response) {
+                            if (response.success && response.order) {
+                                Swal.fire({
+                                    title: `Table ${number} is Occupied`,
+                                    text: `Table ${number} is occupied by ${response.order.customer_name}. Would you like to add more items to their active order?`,
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#15803d',
+                                    cancelButtonColor: '#64748b',
+                                    confirmButtonText: 'Yes, add items',
+                                    cancelButtonText: 'No'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        // Fill form fields
+                                        $('#customer_name').val(response.order.customer_name).prop('readonly', true);
+                                        $('#contact_number').val(response.order.contact_number).prop('readonly', true);
+                                        $('#appendToOrderId').val(response.order.id);
+                                        
+                                        // Select the table in the UI
+                                        $('.table-map-card').removeClass('table-selected');
+                                        $(`.table-map-card[data-id="${id}"]`).addClass('table-selected');
+                                        $('#selectedTableId').val(id);
+                                        
+                                        // Clear table validation error
+                                        if (typeof $('#orderForm').validate === 'function') {
+                                            $('#orderForm').validate().element('#selectedTableId');
+                                        }
+
+                                        Swal.fire({
+                                            toast: true,
+                                            position: 'top-end',
+                                            icon: 'info',
+                                            title: 'Ready to add items to existing order.',
+                                            showConfirmButton: false,
+                                            timer: 3000
+                                        });
+                                    }
+                                });
+                            } else {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: 'Could not fetch order details for this table.',
+                                    confirmButtonColor: '#dc2626'
+                                });
+                            }
+                        },
+                        error: function() {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: 'Failed to retrieve active order. Please try again.',
+                                confirmButtonColor: '#dc2626'
+                            });
+                        }
                     });
                     return;
                 }
@@ -750,9 +805,49 @@
                 $(this).addClass('table-selected');
                 $('#selectedTableId').val(id);
 
+                // Clear append state and restore fields since a free table was selected
+                $('#appendToOrderId').val('');
+                $('#customer_name').prop('readonly', false);
+                $('#contact_number').prop('readonly', false);
+
                 // Re-run validation on table_id input to clear errors
                 if (typeof $('#orderForm').validate === 'function') {
                     $('#orderForm').validate().element('#selectedTableId');
+                }
+            });
+
+            // Auto-fetch customer name by contact number
+            $('#contact_number').on('blur change', function() {
+                // If it is set to readonly (because we selected an occupied table), don't fetch/overwrite
+                if ($(this).prop('readonly')) {
+                    return;
+                }
+                
+                const phone = $(this).val().trim();
+                if (phone.length >= 5) {
+                    $.ajax({
+                        url: "{{ route('customers.lookup') }}",
+                        type: 'GET',
+                        data: { phone: phone },
+                        success: function(response) {
+                            if (response.success && response.name) {
+                                const currentName = $('#customer_name').val().trim();
+                                if (!currentName) {
+                                    $('#customer_name').val(response.name);
+                                    
+                                    // Visual cue/toast
+                                    Swal.fire({
+                                        toast: true,
+                                        position: 'top-end',
+                                        icon: 'success',
+                                        title: `Welcome back, ${response.name}!`,
+                                        showConfirmButton: false,
+                                        timer: 3000
+                                    });
+                                }
+                            }
+                        }
+                    });
                 }
             });
 
@@ -867,7 +962,8 @@
                         contact_number: contactNumber,
                         table_id: tableId,
                         special_instructions: specialInstructions,
-                        items: itemsPayload
+                        items: itemsPayload,
+                        append_to_order_id: $('#appendToOrderId').val() || null
                     }),
                     success: function(response) {
                         Swal.close();
@@ -883,10 +979,11 @@
                             renderCart();
                             
                             // Reset inputs
-                            $('#customer_name').val('');
-                            $('#contact_number').val('');
+                            $('#customer_name').val('').prop('readonly', false);
+                            $('#contact_number').val('').prop('readonly', false);
                             $('#special_instructions').val('');
                             $('#selectedTableId').val('');
+                            $('#appendToOrderId').val('');
                             $('.table-map-card').removeClass('table-selected');
 
                             // Mark the ordered table card as occupied in the UI

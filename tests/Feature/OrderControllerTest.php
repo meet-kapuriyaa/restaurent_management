@@ -354,4 +354,101 @@ class OrderControllerTest extends TestCase
         $this->assertEquals('completed', $order->status);
         $this->assertEquals('unpaid', $order->payment_status);
     }
+
+    /**
+     * Test lookup customer by phone.
+     */
+    public function test_can_lookup_returning_customer_by_phone(): void
+    {
+        Order::create([
+            'customer_name' => 'Alice Doe',
+            'contact_number' => '1234567890',
+            'total_amount' => 15.00,
+            'status' => 'completed',
+            'payment_status' => 'paid'
+        ]);
+
+        $response = $this->actingAs($this->waiterUser)->getJson(route('customers.lookup', ['phone' => '1234567890']));
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'name' => 'Alice Doe'
+            ]);
+    }
+
+    /**
+     * Test retrieve active order by table.
+     */
+    public function test_can_get_active_order_by_table(): void
+    {
+        $activeOrder = Order::create([
+            'customer_name' => 'Bob Smith',
+            'contact_number' => '0987654321',
+            'total_amount' => 20.00,
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+            'table_id' => $this->table->id
+        ]);
+
+        $response = $this->actingAs($this->waiterUser)->getJson(route('orders.active-by-table', $this->table));
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'order' => [
+                    'id' => $activeOrder->id,
+                    'customer_name' => 'Bob Smith'
+                ]
+            ]);
+    }
+
+    /**
+     * Test appending items to an active order.
+     */
+    public function test_can_append_items_to_active_order(): void
+    {
+        $food1 = FoodItem::create(['name' => 'Item 1', 'price' => 10.00, 'status' => 'available']);
+        $food2 = FoodItem::create(['name' => 'Item 2', 'price' => 5.00, 'status' => 'available']);
+
+        $order = Order::create([
+            'customer_name' => 'Charlie Brown',
+            'contact_number' => '1122334455',
+            'total_amount' => 10.00,
+            'status' => 'ready',
+            'payment_status' => 'unpaid',
+            'table_id' => $this->table->id
+        ]);
+
+        OrderItem::create([
+            'order_id' => $order->id,
+            'food_item_id' => $food1->id,
+            'quantity' => 1,
+            'price' => 10.00
+        ]);
+
+        $response = $this->actingAs($this->waiterUser)->postJson(route('orders.store'), [
+            'customer_name' => 'Charlie Brown',
+            'contact_number' => '1122334455',
+            'table_id' => $this->table->id,
+            'append_to_order_id' => $order->id,
+            'items' => [
+                [
+                    'food_item_id' => $food2->id,
+                    'quantity' => 2,
+                    'modifiers' => ''
+                ]
+            ]
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'success' => true
+            ]);
+
+        $order = $order->fresh();
+        $this->assertEquals(20.00, (float) $order->total_amount); // 10.00 + (2 * 5.00) = 20.00
+        $this->assertEquals('preparing', $order->status); // Reset from ready to preparing
+        $this->assertCount(2, $order->orderItems);
+    }
 }

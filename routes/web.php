@@ -20,6 +20,10 @@ Route::middleware('auth')->group(function () {
     // Central Home Portal Landing Page
     Route::get('/', [AuthController::class, 'home'])->name('home');
 
+    // Customer and order lookup routes
+    Route::get('/customers/lookup', [OrderController::class, 'lookupCustomer'])->name('customers.lookup');
+    Route::get('/orders/active-by-table/{table}', [OrderController::class, 'getActiveOrderByTable'])->name('orders.active-by-table');
+
     // Profile Management Routes
     Route::get('/profile', [AuthController::class, 'showProfile'])->name('profile.show');
     Route::post('/profile/info', [AuthController::class, 'updateProfileInfo'])->name('profile.info.update');
