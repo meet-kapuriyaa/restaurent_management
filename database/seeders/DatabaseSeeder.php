@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
         $tables = [
             ['table_number' => 'T1', 'capacity' => 2, 'status' => 'available'],
             ['table_number' => 'T2', 'capacity' => 4, 'status' => 'available'],
-            ['table_number' => 'T3', 'capacity' => 4, 'status' => 'occupied'],
+            ['table_number' => 'T3', 'capacity' => 4, 'status' => 'available'],
             ['table_number' => 'T4', 'capacity' => 6, 'status' => 'available'],
             ['table_number' => 'T5', 'capacity' => 8, 'status' => 'available'],
         ];
