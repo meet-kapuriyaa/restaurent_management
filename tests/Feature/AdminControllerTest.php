@@ -491,4 +491,37 @@ class AdminControllerTest extends TestCase
         $response->assertStatus(200)
             ->assertViewIs('invoice');
     }
+
+    public function test_admin_can_delete_custom_role(): void
+    {
+        // First create a custom role permission record
+        \App\Models\RolePermission::create([
+            'role' => 'custom_role',
+            'page' => 'waiter_terminal',
+            'is_allowed' => true,
+        ]);
+
+        $response = $this->actingAs($this->adminUser)->deleteJson(route('admin.roles.delete', 'custom_role'));
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => "Role 'Custom role' deleted successfully."
+            ]);
+
+        $this->assertDatabaseMissing('role_permissions', [
+            'role' => 'custom_role',
+        ]);
+    }
+
+    public function test_admin_cannot_delete_protected_role(): void
+    {
+        $response = $this->actingAs($this->adminUser)->deleteJson(route('admin.roles.delete', 'admin'));
+
+        $response->assertStatus(400)
+            ->assertJson([
+                'success' => false,
+                'message' => 'System roles (admin, waiter, chef) cannot be deleted.'
+            ]);
+    }
 }

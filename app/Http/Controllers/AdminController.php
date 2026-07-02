@@ -515,6 +515,42 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Delete a custom role.
+     */
+    public function deleteRole($role)
+    {
+        if (!Auth::user()->hasPermission('can_delete')) {
+            return response()->json(['success' => false, 'message' => 'Access Denied: You do not have permission to delete roles.'], 403);
+        }
+
+        // Prevent deleting core system roles
+        $protectedRoles = ['admin', 'waiter', 'chef'];
+        if (in_array(strtolower($role), $protectedRoles)) {
+            return response()->json(['success' => false, 'message' => 'System roles (admin, waiter, chef) cannot be deleted.'], 400);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Delete all role permissions
+            RolePermission::where('role', $role)->delete();
+
+            // Revert users belonging to this role back to 'waiter'
+            \App\Models\User::where('role', $role)->update(['role' => 'waiter']);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Role '" . ucfirst(str_replace('_', ' ', $role)) . "' deleted successfully."
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Admin failed to delete role: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete role.'], 500);
+        }
+    }
+
 
     public function crmIndex(Request $request)
     {

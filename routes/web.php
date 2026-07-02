@@ -72,6 +72,7 @@ Route::middleware('auth')->group(function () {
         // Access Control & User Role Management
         Route::post('/permissions', [AdminController::class, 'updatePermissions'])->name('admin.permissions.update');
         Route::post('/roles', [AdminController::class, 'createRole'])->name('admin.roles.create');
+        Route::delete('/roles/{role}', [AdminController::class, 'deleteRole'])->name('admin.roles.delete');
         Route::patch('/users/{user}/role', [AdminController::class, 'updateUserRole'])->name('admin.users.role');
         Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
     });

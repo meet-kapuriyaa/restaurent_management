@@ -598,7 +598,17 @@
                                                 $roleLabel = ucfirst($roleKey);
                                             @endphp
                                             <tr data-role="{{ $roleKey }}">
-                                                <td class="fw-bold text-dark text-start">{{ $roleLabel }}</td>
+                                                <td class="fw-bold text-dark text-start d-flex justify-content-between align-items-center">
+                                                    <span>{{ $roleLabel }}</span>
+                                                    @if(!in_array($roleKey, ['admin', 'waiter', 'chef']))
+                                                        <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0 delete-role-btn" 
+                                                                data-role="{{ $roleKey }}" 
+                                                                data-label="{{ $roleLabel }}"
+                                                                title="Delete Role">
+                                                            <i class="bi bi-trash3-fill" style="font-size: 0.8rem;"></i>
+                                                        </button>
+                                                    @endif
+                                                </td>
                                                 @foreach(['waiter_terminal', 'kitchen_terminal', 'admin_panel', 'can_insert', 'can_update', 'can_delete'] as $pageKey)
                                                     <td>
                                                         <div class="form-check form-switch d-inline-block">
@@ -1527,7 +1537,15 @@
                                     // Add the new role row to the Permissions Matrix table dynamically
                                     const newRow = `
                                         <tr data-role="${response.role_key}">
-                                            <td class="fw-bold text-dark text-start">${response.role_label}</td>
+                                             <td class="fw-bold text-dark text-start d-flex justify-content-between align-items-center">
+                                                 <span>${response.role_label}</span>
+                                                 <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0 delete-role-btn" 
+                                                         data-role="${response.role_key}" 
+                                                         data-label="${response.role_label}"
+                                                         title="Delete Role">
+                                                     <i class="bi bi-trash3-fill" style="font-size: 0.8rem;"></i>
+                                                 </button>
+                                             </td>
                                             <td>
                                                 <div class="form-check form-switch d-inline-block">
                                                     <input class="form-check-input permission-switch" type="checkbox" data-role="${response.role_key}" data-page="waiter_terminal">
@@ -1573,6 +1591,60 @@
                                     icon: 'error',
                                     title: 'Error',
                                     text: xhr.responseJSON?.message || 'Failed to create role.'
+                                });
+                            }
+                        });
+                    }
+            });
+
+            // Delete Role dynamically (delegated)
+            $(document).on('click', '.delete-role-btn', function() {
+                const roleKey = $(this).data('role');
+                const roleLabel = $(this).data('label');
+
+                Swal.fire({
+                    title: 'Delete Role?',
+                    text: `Are you sure you want to delete the role "${roleLabel}"? All users assigned to this role will revert to the "Waiter" role.`,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Yes, delete it!'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `/admin/roles/${roleKey}`,
+                            type: 'DELETE',
+                            headers: {
+                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                            },
+                            success: function(response) {
+                                if (response.success) {
+                                    Swal.fire({
+                                        icon: 'success',
+                                        title: 'Deleted!',
+                                        text: response.message,
+                                        timer: 1500,
+                                        showConfirmButton: false
+                                    });
+
+                                    // Remove row from table
+                                    $(`tr[data-role="${roleKey}"]`).remove();
+
+                                    // Remove option from all user role selectors and update their selected state if they had this role
+                                    $('.user-role-select').each(function() {
+                                        $(this).find(`option[value="${roleKey}"]`).remove();
+                                        if ($(this).val() === roleKey || $(this).val() === null) {
+                                            $(this).val('waiter');
+                                        }
+                                    });
+                                }
+                            },
+                            error: function(xhr) {
+                                Swal.fire({
+                                    icon: 'error',
+                                    title: 'Error',
+                                    text: xhr.responseJSON?.message || 'Failed to delete role.'
                                 });
                             }
                         });
