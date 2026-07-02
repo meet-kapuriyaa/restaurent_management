@@ -56,6 +56,16 @@ class User extends Authenticatable
         if ($this->role === 'admin') {
             return true;
         }
+
+        // Check if the role is active
+        $roleActiveStatus = \App\Models\RolePermission::where('role', $this->role)
+            ->where('page', 'role_active')
+            ->first();
+
+        if ($roleActiveStatus && !$roleActiveStatus->is_allowed) {
+            return false;
+        }
+
         return \App\Models\RolePermission::where('role', $this->role)
             ->where('page', $action)
             ->where('is_allowed', true)

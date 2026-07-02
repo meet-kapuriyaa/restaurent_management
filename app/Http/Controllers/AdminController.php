@@ -494,12 +494,12 @@ class AdminController extends Controller
             }
 
             // Create default page and action permissions for new role
-            $permissionsList = ['waiter_terminal', 'kitchen_terminal', 'admin_panel', 'can_insert', 'can_update', 'can_delete'];
+            $permissionsList = ['waiter_terminal', 'kitchen_terminal', 'admin_panel', 'can_insert', 'can_update', 'can_delete', 'role_active'];
             foreach ($permissionsList as $page) {
                 RolePermission::create([
                     'role' => $roleKey,
                     'page' => $page,
-                    'is_allowed' => false
+                    'is_allowed' => ($page === 'role_active') ? true : false
                 ]);
             }
 
@@ -516,38 +516,44 @@ class AdminController extends Controller
     }
 
     /**
-     * Delete a custom role.
+     * Toggle active/inactive status of a custom or waiter/chef role.
      */
-    public function deleteRole($role)
+    public function toggleRoleStatus(Request $request)
     {
-        if (!Auth::user()->hasPermission('can_delete')) {
-            return response()->json(['success' => false, 'message' => 'Access Denied: You do not have permission to delete roles.'], 403);
+        if (!Auth::user()->hasPermission('can_update')) {
+            return response()->json(['success' => false, 'message' => 'Access Denied: You do not have permission to update roles.'], 403);
         }
 
-        // Prevent deleting core system roles
-        $protectedRoles = ['admin', 'waiter', 'chef'];
-        if (in_array(strtolower($role), $protectedRoles)) {
-            return response()->json(['success' => false, 'message' => 'System roles (admin, waiter, chef) cannot be deleted.'], 400);
+        $request->validate([
+            'role' => 'required|string',
+            'status' => 'required|integer|in:0,1'
+        ]);
+
+        $role = $request->input('role');
+        $status = (int)$request->input('status');
+
+        // Prevent deactivating admin role
+        if ($role === 'admin') {
+            return response()->json(['success' => false, 'message' => 'The Admin role cannot be deactivated.'], 400);
         }
 
-        DB::beginTransaction();
         try {
-            // Delete all role permissions
-            RolePermission::where('role', $role)->delete();
+            // Update or create the role_active permission record
+            RolePermission::updateOrCreate(
+                ['role' => $role, 'page' => 'role_active'],
+                ['is_allowed' => $status === 1]
+            );
 
-            // Revert users belonging to this role back to 'waiter'
-            \App\Models\User::where('role', $role)->update(['role' => 'waiter']);
-
-            DB::commit();
+            $statusText = $status === 1 ? 'activated' : 'deactivated';
 
             return response()->json([
                 'success' => true,
-                'message' => "Role '" . ucfirst(str_replace('_', ' ', $role)) . "' deleted successfully."
+                'message' => "Role '" . ucfirst(str_replace('_', ' ', $role)) . "' " . $statusText . " successfully.",
+                'is_active' => $status === 1
             ]);
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Admin failed to delete role: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Failed to delete role.'], 500);
+            Log::error('Admin failed to toggle role status: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to change role status.'], 500);
         }
     }
 

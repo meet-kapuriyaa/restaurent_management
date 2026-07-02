@@ -192,6 +192,12 @@
             background-color: #27ae60;
             transform: translateY(-1px);
         }
+        .btn-action-status.inactive {
+            background-color: #ff4757; /* Coral red when inactive */
+        }
+        .btn-action-status.inactive:hover {
+            background-color: #e03d4b;
+        }
 
         /* Cyan edit button */
         .btn-action-edit {
@@ -590,25 +596,18 @@
                                             <th>Insert</th>
                                             <th>Update</th>
                                             <th>Delete</th>
+                                            <th>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         @foreach($availableRoles as $roleKey)
                                             @php
                                                 $roleLabel = ucfirst($roleKey);
+                                                $roleActiveRecord = \App\Models\RolePermission::where('role', $roleKey)->where('page', 'role_active')->first();
+                                                $isRoleActive = $roleActiveRecord ? (bool)$roleActiveRecord->is_allowed : true;
                                             @endphp
                                             <tr data-role="{{ $roleKey }}">
-                                                <td class="fw-bold text-dark text-start d-flex justify-content-between align-items-center">
-                                                    <span>{{ $roleLabel }}</span>
-                                                    @if(!in_array($roleKey, ['admin', 'waiter', 'chef']))
-                                                        <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0 delete-role-btn" 
-                                                                data-role="{{ $roleKey }}" 
-                                                                data-label="{{ $roleLabel }}"
-                                                                title="Delete Role">
-                                                            <i class="bi bi-trash3-fill" style="font-size: 0.8rem;"></i>
-                                                        </button>
-                                                    @endif
-                                                </td>
+                                                <td class="fw-bold text-dark text-start">{{ $roleLabel }}</td>
                                                 @foreach(['waiter_terminal', 'kitchen_terminal', 'admin_panel', 'can_insert', 'can_update', 'can_delete'] as $pageKey)
                                                     <td>
                                                         <div class="form-check form-switch d-inline-block">
@@ -619,6 +618,24 @@
                                                         </div>
                                                     </td>
                                                 @endforeach
+                                                <td>
+                                                    @if($roleKey === 'admin')
+                                                        <button type="button" class="btn-action-square btn-action-status disabled" disabled title="System Protected">
+                                                            <i class="bi bi-lock-fill"></i>
+                                                        </button>
+                                                    @else
+                                                        <button type="button" class="btn-action-square btn-action-status toggle-role-status-btn {{ !$isRoleActive ? 'inactive' : '' }}" 
+                                                                data-role="{{ $roleKey }}"
+                                                                data-status="{{ $isRoleActive ? 1 : 0 }}"
+                                                                title="{{ $isRoleActive ? 'Deactivate Role' : 'Activate Role' }}">
+                                                            @if($isRoleActive)
+                                                                <i class="bi bi-eye-fill"></i>
+                                                            @else
+                                                                <i class="bi bi-eye-slash-fill"></i>
+                                                            @endif
+                                                        </button>
+                                                    @endif
+                                                </td>
                                             </tr>
                                         @endforeach
                                     </tbody>
@@ -1537,15 +1554,7 @@
                                     // Add the new role row to the Permissions Matrix table dynamically
                                     const newRow = `
                                         <tr data-role="${response.role_key}">
-                                             <td class="fw-bold text-dark text-start d-flex justify-content-between align-items-center">
-                                                 <span>${response.role_label}</span>
-                                                 <button class="btn btn-sm btn-outline-danger py-0 px-1 border-0 delete-role-btn" 
-                                                         data-role="${response.role_key}" 
-                                                         data-label="${response.role_label}"
-                                                         title="Delete Role">
-                                                     <i class="bi bi-trash3-fill" style="font-size: 0.8rem;"></i>
-                                                 </button>
-                                             </td>
+                                            <td class="fw-bold text-dark text-start">${response.role_label}</td>
                                             <td>
                                                 <div class="form-check form-switch d-inline-block">
                                                     <input class="form-check-input permission-switch" type="checkbox" data-role="${response.role_key}" data-page="waiter_terminal">
@@ -1576,6 +1585,14 @@
                                                     <input class="form-check-input permission-switch" type="checkbox" data-role="${response.role_key}" data-page="can_delete">
                                                 </div>
                                             </td>
+                                            <td>
+                                                <button type="button" class="btn-action-square btn-action-status toggle-role-status-btn" 
+                                                        data-role="${response.role_key}"
+                                                        data-status="1"
+                                                        title="Deactivate Role">
+                                                    <i class="bi bi-eye-fill"></i>
+                                                </button>
+                                            </td>
                                         </tr>
                                     `;
                                     $('#permissions-matrix-table tbody').append(newRow);
@@ -1595,62 +1612,73 @@
                             }
                         });
                     }
+                });
             });
 
-            // Delete Role dynamically (delegated)
-            $(document).on('click', '.delete-role-btn', function() {
-                const roleKey = $(this).data('role');
-                const roleLabel = $(this).data('label');
+            // Toggle Role status dynamically (delegated)
+            $(document).on('click', '.toggle-role-status-btn', function() {
+                const btn = $(this);
+                const roleKey = btn.data('role');
+                const currentStatus = parseInt(btn.attr('data-status'));
+                const newStatus = currentStatus === 1 ? 0 : 1;
+                const actionText = newStatus === 1 ? 'Activate' : 'Deactivate';
 
                 Swal.fire({
-                    title: 'Delete Role?',
-                    text: `Are you sure you want to delete the role "${roleLabel}"? All users assigned to this role will revert to the "Waiter" role.`,
+                    title: `${actionText} Role?`,
+                    text: `Are you sure you want to ${actionText.toLowerCase()} this role?`,
                     icon: 'warning',
                     showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    cancelButtonColor: '#3085d6',
-                    confirmButtonText: 'Yes, delete it!'
+                    confirmButtonColor: '#3085d6',
+                    cancelButtonColor: '#d33',
+                    confirmButtonText: `Yes, ${actionText.toLowerCase()} it!`
                 }).then((result) => {
                     if (result.isConfirmed) {
                         $.ajax({
-                            url: `/admin/roles/${roleKey}`,
-                            type: 'DELETE',
+                            url: "{{ route('admin.roles.toggle-status') }}",
+                            type: 'POST',
                             headers: {
                                 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                            },
+                            data: {
+                                role: roleKey,
+                                status: newStatus
                             },
                             success: function(response) {
                                 if (response.success) {
                                     Swal.fire({
                                         icon: 'success',
-                                        title: 'Deleted!',
+                                        title: 'Success!',
                                         text: response.message,
                                         timer: 1500,
                                         showConfirmButton: false
                                     });
 
-                                    // Remove row from table
-                                    $(`tr[data-role="${roleKey}"]`).remove();
-
-                                    // Remove option from all user role selectors and update their selected state if they had this role
-                                    $('.user-role-select').each(function() {
-                                        $(this).find(`option[value="${roleKey}"]`).remove();
-                                        if ($(this).val() === roleKey || $(this).val() === null) {
-                                            $(this).val('waiter');
-                                        }
-                                    });
+                                    // Update button UI
+                                    btn.attr('data-status', response.is_active ? 1 : 0);
+                                    btn.attr('title', response.is_active ? 'Deactivate Role' : 'Activate Role');
+                                    
+                                    if (response.is_active) {
+                                        btn.removeClass('inactive');
+                                        btn.html('<i class="bi bi-eye-fill"></i>');
+                                    } else {
+                                        btn.addClass('inactive');
+                                        btn.html('<i class="bi bi-eye-slash-fill"></i>');
+                                    }
                                 }
                             },
                             error: function(xhr) {
                                 Swal.fire({
                                     icon: 'error',
                                     title: 'Error',
-                                    text: xhr.responseJSON?.message || 'Failed to delete role.'
+                                    text: xhr.responseJSON?.message || 'Failed to toggle role status.'
                                 });
                             }
                         });
                     }
                 });
             });
+
+
 
             // Filter UI toggle
             function toggleFilterInputs() {

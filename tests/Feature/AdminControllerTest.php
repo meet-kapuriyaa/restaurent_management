@@ -492,36 +492,46 @@ class AdminControllerTest extends TestCase
             ->assertViewIs('invoice');
     }
 
-    public function test_admin_can_delete_custom_role(): void
+    public function test_admin_can_toggle_role_status(): void
     {
-        // First create a custom role permission record
+        // Create custom_role active record
         \App\Models\RolePermission::create([
             'role' => 'custom_role',
-            'page' => 'waiter_terminal',
+            'page' => 'role_active',
             'is_allowed' => true,
         ]);
 
-        $response = $this->actingAs($this->adminUser)->deleteJson(route('admin.roles.delete', 'custom_role'));
+        // Toggle to inactive (0)
+        $response = $this->actingAs($this->adminUser)->postJson(route('admin.roles.toggle-status'), [
+            'role' => 'custom_role',
+            'status' => 0
+        ]);
 
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
-                'message' => "Role 'Custom role' deleted successfully."
+                'message' => "Role 'Custom role' deactivated successfully.",
+                'is_active' => false
             ]);
 
-        $this->assertDatabaseMissing('role_permissions', [
+        $this->assertDatabaseHas('role_permissions', [
             'role' => 'custom_role',
+            'page' => 'role_active',
+            'is_allowed' => false
         ]);
     }
 
-    public function test_admin_cannot_delete_protected_role(): void
+    public function test_admin_cannot_deactivate_admin_role(): void
     {
-        $response = $this->actingAs($this->adminUser)->deleteJson(route('admin.roles.delete', 'admin'));
+        $response = $this->actingAs($this->adminUser)->postJson(route('admin.roles.toggle-status'), [
+            'role' => 'admin',
+            'status' => 0
+        ]);
 
         $response->assertStatus(400)
             ->assertJson([
                 'success' => false,
-                'message' => 'System roles (admin, waiter, chef) cannot be deleted.'
+                'message' => 'The Admin role cannot be deactivated.'
             ]);
     }
 }
