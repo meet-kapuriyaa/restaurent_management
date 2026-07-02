@@ -35,51 +35,57 @@ class DatabaseSeeder extends Seeder
         // Seed Food Items
         $foodItems = [
             [
-                'name' => 'Margherita Pizza',
-                'price' => 12.99,
-                'description' => 'Classic pizza with fresh mozzarella, tomatoes, and basil leaves.',
+                'name' => 'Classic Steamed Idli (2 Pcs)',
+                'price' => 40.00,
+                'description' => 'Soft, fluffy steamed rice cakes served with signature coconut chutney, tomato chutney, and piping hot sambar.',
                 'status' => 'available'
             ],
             [
-                'name' => 'Truffle Mushroom Burger',
-                'price' => 15.50,
-                'description' => 'Gourmet beef patty with truffle mayo, Swiss cheese, and sauteed mushrooms.',
+                'name' => 'Ghee Podi Idli',
+                'price' => 60.00,
+                'description' => 'Spongy idlis tossed in pure cow ghee and aromatic South Indian gunpowder (podi) spice mix.',
                 'status' => 'available'
             ],
             [
-                'name' => 'Caesar Salad',
-                'price' => 9.99,
-                'description' => 'Crisp romaine lettuce, garlic croutons, parmesan cheese, and house Caesar dressing.',
+                'name' => 'Mini Coin Idli',
+                'price' => 50.00,
+                'description' => 'Bite-sized, pillowy soft button idlis drenched in aromatic sambar and fresh coconut chutney.',
                 'status' => 'available'
             ],
             [
-                'name' => 'Spaghetti Carbonara',
-                'price' => 14.25,
-                'description' => 'Creamy pasta sauce, crispy pancetta, black pepper, and shaved parmesan.',
+                'name' => 'Classic Masala Dosa',
+                'price' => 90.00,
+                'description' => 'Golden crispy rice crepe stuffed with spiced potato mash, served with coconut chutney and hot sambar.',
                 'status' => 'available'
             ],
             [
-                'name' => 'Chocolate Lava Cake',
-                'price' => 7.99,
-                'description' => 'Warm chocolate cake with a molten chocolate center, served with vanilla ice cream.',
+                'name' => 'Mysore Masala Dosa',
+                'price' => 100.00,
+                'description' => 'Crispy dosa spread with a spicy red garlic chutney lining and seasoned potato filling.',
                 'status' => 'available'
             ],
             [
-                'name' => 'Iced Caramel Macchiato',
-                'price' => 4.50,
-                'description' => 'Espresso with cold milk, vanilla syrup, and sweet caramel drizzle.',
+                'name' => 'Rava Onion Dosa',
+                'price' => 100.00,
+                'description' => 'Crispy, lacy semolina crepe loaded with chopped onions, cumin seeds, and fresh green chillies.',
                 'status' => 'available'
             ],
             [
-                'name' => 'Mango Smoothie',
-                'price' => 5.25,
-                'description' => 'Refreshing blend of fresh sweet mangoes and chilled yogurt.',
+                'name' => 'Medu Vada (2 Pcs)',
+                'price' => 40.00,
+                'description' => 'Golden-fried black gram donuts seasoned with peppercorns, ginger, and curry leaves.',
                 'status' => 'available'
             ],
             [
-                'name' => 'Crispy Chicken Wings',
-                'price' => 11.00,
-                'description' => 'Tender chicken wings tossed in your choice of spicy buffalo or honey garlic sauce.',
+                'name' => 'Filter Coffee',
+                'price' => 30.00,
+                'description' => 'Authentic hot South Indian decoction coffee brewed with milk and served in a traditional brass dabarah cup.',
+                'status' => 'available'
+            ],
+            [
+                'name' => 'Sweet Kesari Bath',
+                'price' => 40.00,
+                'description' => 'Traditional semolina dessert pudding cooked with clarified butter, cardamom, and roasted cashews.',
                 'status' => 'unavailable'
             ]
         ];
@@ -120,16 +126,25 @@ class DatabaseSeeder extends Seeder
             ['role' => 'admin', 'page' => 'waiter_terminal', 'is_allowed' => true],
             ['role' => 'admin', 'page' => 'kitchen_terminal', 'is_allowed' => true],
             ['role' => 'admin', 'page' => 'admin_panel', 'is_allowed' => true],
+            ['role' => 'admin', 'page' => 'can_insert', 'is_allowed' => true],
+            ['role' => 'admin', 'page' => 'can_update', 'is_allowed' => true],
+            ['role' => 'admin', 'page' => 'can_delete', 'is_allowed' => true],
 
             // Waiter Permissions
             ['role' => 'waiter', 'page' => 'waiter_terminal', 'is_allowed' => true],
             ['role' => 'waiter', 'page' => 'kitchen_terminal', 'is_allowed' => false],
             ['role' => 'waiter', 'page' => 'admin_panel', 'is_allowed' => false],
+            ['role' => 'waiter', 'page' => 'can_insert', 'is_allowed' => false],
+            ['role' => 'waiter', 'page' => 'can_update', 'is_allowed' => false],
+            ['role' => 'waiter', 'page' => 'can_delete', 'is_allowed' => false],
 
             // Chef Permissions
             ['role' => 'chef', 'page' => 'waiter_terminal', 'is_allowed' => false],
             ['role' => 'chef', 'page' => 'kitchen_terminal', 'is_allowed' => true],
             ['role' => 'chef', 'page' => 'admin_panel', 'is_allowed' => false],
+            ['role' => 'chef', 'page' => 'can_insert', 'is_allowed' => false],
+            ['role' => 'chef', 'page' => 'can_update', 'is_allowed' => false],
+            ['role' => 'chef', 'page' => 'can_delete', 'is_allowed' => false],
         ];
 
         foreach ($permissions as $perm) {

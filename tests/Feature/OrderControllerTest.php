@@ -246,9 +246,13 @@ class OrderControllerTest extends TestCase
             'customer_name' => 'Charlie Brown',
             'contact_number' => '555-9876',
             'total_amount' => 15.00,
-            'status' => 'pending',
-            'payment_status' => 'unpaid'
+            'status' => 'ready',
+            'payment_status' => 'unpaid',
+            'table_id' => $this->table->id
         ]);
+
+        // Mark table occupied first to test release
+        $this->table->update(['status' => 'occupied']);
 
         $response = $this->actingAs($this->waiterUser)->postJson(route('orders.complete', $order));
 
@@ -257,12 +261,59 @@ class OrderControllerTest extends TestCase
                 'success' => true
             ]);
 
-        // Assert order is updated
+        // Assert order status is completed, but payment status is still unpaid
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
             'status' => 'completed',
-            'payment_status' => 'paid'
+            'payment_status' => 'unpaid'
         ]);
+
+        // Assert table is released
+        $this->assertEquals('available', $this->table->fresh()->status);
+    }
+
+    /**
+     * Test completing an order that is not ready fails.
+     */
+    public function test_cannot_complete_non_ready_order(): void
+    {
+        $order = Order::create([
+            'customer_name' => 'Charlie Brown',
+            'contact_number' => '555-9876',
+            'total_amount' => 15.00,
+            'status' => 'preparing',
+            'payment_status' => 'unpaid'
+        ]);
+
+        $response = $this->actingAs($this->waiterUser)->postJson(route('orders.complete', $order));
+
+        $response->assertStatus(400)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Only orders that have been marked as ready by the kitchen can be completed.'
+            ]);
+    }
+
+    /**
+     * Test that an order cannot be completed twice.
+     */
+    public function test_cannot_complete_order_twice(): void
+    {
+        $order = Order::create([
+            'customer_name' => 'Charlie Brown',
+            'contact_number' => '555-9876',
+            'total_amount' => 15.00,
+            'status' => 'completed',
+            'payment_status' => 'unpaid'
+        ]);
+
+        $response = $this->actingAs($this->waiterUser)->postJson(route('orders.complete', $order));
+
+        $response->assertStatus(400)
+            ->assertJson([
+                'success' => false,
+                'message' => 'This order has already been completed.'
+            ]);
     }
 
     /**
@@ -307,9 +358,9 @@ class OrderControllerTest extends TestCase
     }
 
     /**
-     * Test that the kitchen cannot complete an order that is pending/not accepted.
+     * Test that the kitchen cannot mark an order as ready that is pending/not accepted.
      */
-    public function test_cannot_complete_pending_order_without_accepting(): void
+    public function test_cannot_mark_pending_order_ready_without_accepting(): void
     {
         $order = Order::create([
             'customer_name' => 'Jane Smith',
@@ -319,21 +370,21 @@ class OrderControllerTest extends TestCase
             'payment_status' => 'unpaid'
         ]);
 
-        $response = $this->actingAs($this->chefUser)->postJson(route('orders.status', $order), ['status' => 'completed']);
+        $response = $this->actingAs($this->chefUser)->postJson(route('orders.status', $order), ['status' => 'ready']);
 
         $response->assertStatus(400)
             ->assertJson([
                 'success' => false,
-                'message' => 'Cannot complete an order that has not been accepted yet.'
+                'message' => 'Cannot mark an order as ready that has not been accepted yet.'
             ]);
 
         $this->assertEquals('pending', $order->fresh()->status);
     }
 
     /**
-     * Test that kitchen completing an order updates status to completed but does not mark payment as paid.
+     * Test that kitchen marking an order as ready updates status to ready but does not mark payment as paid.
      */
-    public function test_kitchen_completion_does_not_mark_payment_as_paid(): void
+    public function test_kitchen_marking_ready_does_not_mark_payment_as_paid(): void
     {
         $order = Order::create([
             'customer_name' => 'Jane Smith',
@@ -343,7 +394,7 @@ class OrderControllerTest extends TestCase
             'payment_status' => 'unpaid'
         ]);
 
-        $response = $this->actingAs($this->chefUser)->postJson(route('orders.status', $order), ['status' => 'completed']);
+        $response = $this->actingAs($this->chefUser)->postJson(route('orders.status', $order), ['status' => 'ready']);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -351,7 +402,7 @@ class OrderControllerTest extends TestCase
             ]);
 
         $order = $order->fresh();
-        $this->assertEquals('completed', $order->status);
+        $this->assertEquals('ready', $order->status);
         $this->assertEquals('unpaid', $order->payment_status);
     }
 

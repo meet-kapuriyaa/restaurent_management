@@ -454,4 +454,41 @@ class AdminControllerTest extends TestCase
         $response->assertSee('Bob Smith');
         $response->assertSee('Charlie Brown');
     }
+
+    /**
+     * Test that admin cannot print invoice for non-completed order.
+     */
+    public function test_admin_cannot_print_invoice_for_non_completed_order(): void
+    {
+        $order = Order::create([
+            'customer_name' => 'John Doe',
+            'contact_number' => '1234567890',
+            'total_amount' => 50.00,
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)->get(route('admin.orders.invoice', $order));
+
+        $response->assertStatus(403);
+    }
+
+    /**
+     * Test that admin can print invoice for completed order.
+     */
+    public function test_admin_can_print_invoice_for_completed_order(): void
+    {
+        $order = Order::create([
+            'customer_name' => 'John Doe',
+            'contact_number' => '1234567890',
+            'total_amount' => 50.00,
+            'status' => 'completed',
+            'payment_status' => 'unpaid',
+        ]);
+
+        $response = $this->actingAs($this->adminUser)->get(route('admin.orders.invoice', $order));
+
+        $response->assertStatus(200)
+            ->assertViewIs('invoice');
+    }
 }

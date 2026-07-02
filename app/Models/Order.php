@@ -15,6 +15,10 @@ class Order extends Model
         'table_id',
         'payment_method',
         'special_instructions',
+        'tax_amount',
+        'discount_amount',
+        'tip_amount',
+        'user_id',
     ];
 
     public function orderItems()
@@ -25,5 +29,11 @@ class Order extends Model
     public function table()
     {
         return $this->belongsTo(Table::class);
+    }
+
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

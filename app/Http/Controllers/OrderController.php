@@ -78,6 +78,7 @@ class OrderController extends Controller
                     'payment_status' => 'unpaid',
                     'table_id' => $request->table_id,
                     'special_instructions' => $request->special_instructions,
+                    'user_id' => Auth::id(),
                 ]);
 
                 // Mark table occupied
@@ -88,9 +89,18 @@ class OrderController extends Controller
 
             $totalAmount = $request->filled('append_to_order_id') ? (float) $order->total_amount : 0.00;
 
+            // Batch load all food items in a single query to optimize database calls
+            $foodItemIds = array_column($request->items, 'food_item_id');
+            $foodItemsMap = FoodItem::whereIn('id', $foodItemIds)->get()->keyBy('id');
+
             // Iterate over items to save them and calculate total amount based on DB prices
             foreach ($request->items as $itemData) {
-                $foodItem = FoodItem::findOrFail($itemData['food_item_id']);
+                $foodItemId = $itemData['food_item_id'];
+                $foodItem = $foodItemsMap->get($foodItemId);
+                
+                if (!$foodItem) {
+                    throw new \Illuminate\Database\Eloquent\ModelNotFoundException("Food item ID {$foodItemId} not found.");
+                }
                 
                 $itemPrice = $foodItem->price;
                 $quantity = (int) $itemData['quantity'];
@@ -113,8 +123,12 @@ class OrderController extends Controller
                 ]);
             }
 
+            // Calculate tax (5% GST)
+            $taxAmount = round($totalAmount * 0.05, 2);
+
             // Update order total amount and save other dirty attributes (like status/instructions)
             $order->total_amount = $totalAmount;
+            $order->tax_amount = $taxAmount;
             $order->save();
 
             DB::commit();
@@ -164,12 +178,25 @@ class OrderController extends Controller
             ], 403);
         }
 
+        if ($order->status === 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This order has already been completed.'
+            ], 400);
+        }
+
+        if ($order->status !== 'ready') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only orders that have been marked as ready by the kitchen can be completed.'
+            ], 400);
+        }
+
         DB::beginTransaction();
 
         try {
             $order->update([
                 'status' => 'completed',
-                'payment_status' => 'paid',
             ]);
 
             if ($order->table) {
@@ -180,7 +207,7 @@ class OrderController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Order #' . $order->id . ' completed and payment recorded successfully!',
+                'message' => 'Order #' . $order->id . ' completed successfully!',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -217,10 +244,10 @@ class OrderController extends Controller
             'status' => 'required|in:pending,preparing,ready,completed',
         ]);
 
-        if ($request->status === 'completed' && $order->status === 'pending') {
+        if ($request->status === 'ready' && $order->status === 'pending') {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot complete an order that has not been accepted yet.'
+                'message' => 'Cannot mark an order as ready that has not been accepted yet.'
             ], 400);
         }
 
@@ -257,15 +284,29 @@ class OrderController extends Controller
             'phone' => 'required|string',
         ]);
 
-        $customer = Order::where('contact_number', $request->phone)
-            ->whereNotNull('customer_name')
-            ->orderBy('created_at', 'desc')
-            ->first();
+        $customer = \App\Models\Customer::where('phone_number', $request->phone)->first();
+
+        if (!$customer) {
+            // Fallback to orders table to import customer
+            $lastOrder = Order::where('contact_number', $request->phone)
+                ->whereNotNull('customer_name')
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($lastOrder) {
+                $customer = \App\Models\Customer::create([
+                    'phone_number' => $request->phone,
+                    'name' => $lastOrder->customer_name,
+                    'total_spend' => 0,
+                    'total_visits' => 0,
+                ]);
+            }
+        }
 
         if ($customer) {
             return response()->json([
                 'success' => true,
-                'name' => $customer->customer_name,
+                'name' => $customer->name,
             ]);
         }
 

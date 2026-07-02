@@ -158,4 +158,46 @@ class TableManagementTest extends TestCase
         $response = $this->actingAs($this->waiterUser)->deleteJson(route('admin.tables.delete', $table));
         $response->assertStatus(403);
     }
+
+    /**
+     * Test admin can toggle table availability status.
+     */
+    public function test_admin_can_toggle_table_status(): void
+    {
+        $table = Table::create(['table_number' => 'T75', 'capacity' => 4, 'status' => 'available']);
+
+        // Toggle to unavailable
+        $response = $this->actingAs($this->adminUser)->patchJson(route('admin.tables.status', $table));
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'status' => 'unavailable'
+            ]);
+        $this->assertEquals('unavailable', $table->fresh()->status);
+
+        // Toggle back to available
+        $response = $this->actingAs($this->adminUser)->patchJson(route('admin.tables.status', $table));
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'status' => 'available'
+            ]);
+        $this->assertEquals('available', $table->fresh()->status);
+    }
+
+    /**
+     * Test admin cannot toggle status of occupied table.
+     */
+    public function test_admin_cannot_toggle_status_of_occupied_table(): void
+    {
+        $table = Table::create(['table_number' => 'T80', 'capacity' => 4, 'status' => 'occupied']);
+
+        $response = $this->actingAs($this->adminUser)->patchJson(route('admin.tables.status', $table));
+        $response->assertStatus(400)
+            ->assertJson([
+                'success' => false,
+                'message' => 'Cannot deactivate table while it is occupied.'
+            ]);
+        $this->assertEquals('occupied', $table->fresh()->status);
+    }
 }

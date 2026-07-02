@@ -310,7 +310,7 @@
                     url: "{{ route('orders.pending') }}",
                     type: 'GET',
                     success: function(allOrders) {
-                        const orders = allOrders.filter(order => order.status !== 'completed');
+                        const orders = allOrders.filter(order => order.status === 'pending' || order.status === 'preparing');
                         $grid.empty();
                         $countBadge.text(`${orders.length} Active Orders`);
 
@@ -422,8 +422,8 @@
                                                 ${isAccepted ? 'Accepted' : 'Accept'}
                                             </button>
                                             <button type="button" class="btn btn-lg btn-success w-50 status-change-btn fw-semibold" 
-                                                    data-id="${order.id}" data-target-status="completed" data-current-status="${order.status}">
-                                                <i class="bi bi-check-lg me-1"></i> Complete
+                                                    data-id="${order.id}" data-target-status="ready" data-current-status="${order.status}">
+                                                <i class="bi bi-check-lg me-1"></i> Ready
                                             </button>
                                         </div>
                                     </div>
@@ -444,10 +444,10 @@
                 const currentStatus = $(this).data('current-status');
 
                 // If attempting to complete without accepting first
-                if (nextStatus === 'completed' && currentStatus === 'pending') {
+                if (nextStatus === 'ready' && currentStatus === 'pending') {
                     Swal.fire({
-                        title: 'Cannot Complete Order',
-                        text: 'You must accept the order before completing it.',
+                        title: 'Cannot Mark as Ready',
+                        text: 'You must accept the order before marking it as ready.',
                         icon: 'warning',
                         confirmButtonColor: '#ef4444',
                         confirmButtonText: 'OK'
@@ -456,15 +456,15 @@
                 }
 
                 // For completion, ask for a confirmation prompt
-                if (nextStatus === 'completed') {
+                if (nextStatus === 'ready') {
                     Swal.fire({
-                        title: 'Complete Order?',
-                        text: "This will archive the order and finalize the payment.",
+                        title: 'Mark as Ready?',
+                        text: "This will notify the waiters that the order is ready to serve.",
                         icon: 'question',
                         showCancelButton: true,
                         confirmButtonColor: '#10b981',
                         cancelButtonColor: '#64748b',
-                        confirmButtonText: 'Yes, complete order'
+                        confirmButtonText: 'Yes, mark ready'
                     }).then((result) => {
                         if (result.isConfirmed) {
                             changeOrderStatus(orderId, nextStatus);

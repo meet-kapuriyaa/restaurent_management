@@ -329,13 +329,18 @@
                                         <span class="badge bg-success-subtle text-success border border-success-subtle">
                                             <i class="bi bi-check-circle-fill me-1"></i> Available
                                         </span>
-                                        <button type="button" 
-                                                class="btn btn-sm btn-primary-gradient add-to-cart-btn"
-                                                data-id="{{ $item->id }}"
-                                                data-name="{{ $item->name }}"
-                                                data-price="{{ $item->price }}">
-                                            <i class="bi bi-plus-lg me-1"></i> Add to Order
-                                        </button>
+                                        <div class="menu-item-action-container" 
+                                             data-id="{{ $item->id }}"
+                                             data-name="{{ $item->name }}"
+                                             data-price="{{ $item->price }}">
+                                            <button type="button" 
+                                                    class="btn btn-sm btn-primary-gradient add-to-cart-btn"
+                                                    data-id="{{ $item->id }}"
+                                                    data-name="{{ $item->name }}"
+                                                    data-price="{{ $item->price }}">
+                                                <i class="bi bi-plus-lg me-1"></i> Add to Order
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -387,18 +392,28 @@
                                 @foreach($tables as $table)
                                     @php
                                         $isOccupied = $table->status === 'occupied';
+                                        $isInactive = $table->status === 'unavailable';
+                                        
+                                        $cardClass = 'border-success bg-success-subtle text-success';
+                                        if ($isOccupied) {
+                                            $cardClass = 'border-danger bg-danger-subtle text-danger';
+                                        } elseif ($isInactive) {
+                                            $cardClass = 'border-secondary bg-secondary-subtle text-secondary opacity-50';
+                                        }
+                                        
+                                        $cursorClass = $isInactive ? 'inactive-table-card' : 'pointer-cursor table-map-card';
                                     @endphp
                                     <div class="col">
-                                        <div class="card p-2 text-center pointer-cursor table-map-card border h-100 d-flex flex-column justify-content-between {{ $isOccupied ? 'border-danger bg-danger-subtle text-danger' : 'border-success bg-success-subtle text-success' }}" 
+                                        <div class="card p-2 text-center border h-100 d-flex flex-column justify-content-between {{ $cursorClass }} {{ $cardClass }}" 
                                              data-id="{{ $table->id }}" 
                                              data-number="{{ $table->table_number }}" 
                                              data-status="{{ $table->status }}"
-                                             style="border-radius: 12px; transition: all 0.2s ease;">
+                                             @if($isInactive) style="border-radius: 12px; transition: all 0.2s ease; cursor: not-allowed;" @else style="border-radius: 12px; transition: all 0.2s ease;" @endif>
                                             <div class="fw-bold fs-5">{{ $table->table_number }}</div>
                                             <div class="small opacity-75">Cap: {{ $table->capacity }}</div>
                                             <div class="mt-1">
-                                                <span class="badge {{ $isOccupied ? 'bg-danger' : 'bg-success' }}" style="font-size: 0.65rem;">
-                                                    {{ ucfirst($table->status) }}
+                                                <span class="badge {{ $isOccupied ? 'bg-danger' : ($isInactive ? 'bg-secondary text-white' : 'bg-success') }}" style="font-size: 0.65rem;">
+                                                    {{ $isInactive ? 'Inactive' : ucfirst($table->status) }}
                                                 </span>
                                             </div>
                                         </div>
@@ -463,7 +478,12 @@
         <section class="mt-5">
             <div class="card p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="fw-bold mb-0"><i class="bi bi-activity text-warning me-2"></i>Live Pending Orders Monitor</h4>
+                    <div class="d-flex align-items-center gap-2">
+                        <h4 class="fw-bold mb-0"><i class="bi bi-activity text-warning me-2"></i>Live Pending Orders Monitor</h4>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1" style="font-size: 0.65rem; display: inline-flex; align-items: center; gap: 4px;">
+                            <span class="spinner-grow spinner-grow-sm text-success" style="width: 6px; height: 6px;" role="status"></span> Live Sync
+                        </span>
+                    </div>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-orders-btn">
                         <i class="bi bi-arrow-clockwise me-1"></i> Refresh Logs
                     </button>
@@ -523,6 +543,45 @@
 
                 // Update hidden validator field
                 $cartCountInput.val(itemsCount > 0 ? itemsCount : '');
+
+                // Update all menu items action containers based on current cart
+                $('.menu-item-action-container').each(function() {
+                    const container = $(this);
+                    const itemId = container.data('id');
+                    const itemName = container.data('name');
+                    const itemPrice = container.data('price');
+                    const cartKey = itemId + '_';
+                    
+                    const quantity = cart[cartKey] ? cart[cartKey].quantity : 0;
+                    
+                    if (quantity > 0) {
+                        container.html(`
+                            <div class="d-flex align-items-center justify-content-center gap-3" style="height: 32px;">
+                                <button type="button" class="btn p-0 border-0 bg-transparent text-secondary decrease-qty" 
+                                        data-id="${cartKey}" 
+                                        style="font-size: 1.3rem; font-weight: bold; cursor: pointer; color: #64748b !important; line-height: 1;">
+                                    -
+                                </button>
+                                <span class="fw-bold text-dark text-center" style="font-size: 1.1rem; min-width: 20px; line-height: 1;">${quantity}</span>
+                                <button type="button" class="btn p-0 border-0 bg-transparent text-secondary increase-qty" 
+                                        data-id="${cartKey}" 
+                                        style="font-size: 1.3rem; font-weight: bold; cursor: pointer; color: #64748b !important; line-height: 1;">
+                                    +
+                                </button>
+                            </div>
+                        `);
+                    } else {
+                        container.html(`
+                            <button type="button" 
+                                    class="btn btn-sm btn-primary-gradient add-to-cart-btn"
+                                    data-id="${itemId}"
+                                    data-name="${itemName}"
+                                    data-price="${itemPrice}">
+                                <i class="bi bi-plus-lg me-1"></i> Add to Order
+                            </button>
+                        `);
+                    }
+                });
 
                 if (itemsCount === 0) {
                     $cartContents.html(`
@@ -593,53 +652,13 @@
                 }
             }
 
-            // Add item to cart button click -> Open Modifiers Modal
+            // Add item to cart button click -> Direct Add
             $(document).on('click', '.add-to-cart-btn', function() {
                 const id = $(this).data('id');
                 const name = $(this).data('name');
                 const price = parseFloat($(this).data('price'));
 
-                // Set modal parameters
-                $('#modifiersModal').data('item-id', id);
-                $('#modifiersModal').data('item-name', name);
-                $('#modifiersModal').data('item-price', price);
-                
-                $('#modifier-item-name').text(name);
-
-                // Reset modal options
-                $('#spice-mild').prop('checked', true);
-                $('#addon-cheese').prop('checked', false);
-                $('#addon-onions').prop('checked', false);
-                $('#addon-sauce').prop('checked', false);
-
-                // Show modal
-                const myModal = new bootstrap.Modal(document.getElementById('modifiersModal'));
-                myModal.show();
-            });
-
-            // Confirm Modifiers button click
-            $('#confirm-modifiers-btn').on('click', function() {
-                const id = $('#modifiersModal').data('item-id');
-                const name = $('#modifiersModal').data('item-name');
-                let price = parseFloat($('#modifiersModal').data('item-price'));
-
-                // Get selected modifiers
-                const spiceLevel = $('input[name="spice_level"]:checked').val();
-                let modifiersList = [spiceLevel];
-                
-                if ($('#addon-cheese').is(':checked')) {
-                    modifiersList.push('Extra Cheese');
-                    price += 30.00; // Extra cheese price addition
-                }
-                if ($('#addon-onions').is(':checked')) {
-                    modifiersList.push('No Onions');
-                }
-                if ($('#addon-sauce').is(':checked')) {
-                    modifiersList.push('Extra Sauce');
-                }
-
-                const modifiersStr = modifiersList.join(', ');
-                const cartKey = id + '_' + modifiersStr.replace(/\s+/g, '').toLowerCase();
+                const cartKey = id + '_'; // No modifiers
 
                 if (cart[cartKey]) {
                     cart[cartKey].quantity += 1;
@@ -649,16 +668,11 @@
                         name: name,
                         price: price,
                         quantity: 1,
-                        modifiers: modifiersStr
+                        modifiers: ''
                     };
                 }
 
                 renderCart();
-
-                // Hide modal
-                const modalEl = document.getElementById('modifiersModal');
-                const modalInstance = bootstrap.Modal.getInstance(modalEl);
-                modalInstance.hide();
 
                 // Toast notification
                 const Toast = Swal.mixin({
@@ -670,7 +684,7 @@
                 });
                 Toast.fire({
                     icon: 'success',
-                    title: `${name} (${spiceLevel}) added to cart.`
+                    title: `${name} added to cart.`
                 });
             });
 
@@ -1070,6 +1084,8 @@
                                  statusBadge = '<span class="badge bg-primary badge-status">Preparing</span>';
                              } else if (order.status === 'ready') {
                                  statusBadge = '<span class="badge bg-success badge-status">Ready</span>';
+                             } else if (order.status === 'completed') {
+                                 statusBadge = '<span class="badge bg-info text-dark badge-status">Completed</span>';
                              } else {
                                  statusBadge = `<span class="badge bg-secondary badge-status">${order.status}</span>`;
                              }
@@ -1084,6 +1100,7 @@
                                 <tr>
                                     <td class="fw-bold">#ORD-${order.id}</td>
                                     <td>
+                                        ${order.table ? `<div class="mb-1"><span class="badge text-white" style="background: var(--primary-gradient) !important; font-size: 0.75rem;"><i class="bi bi-hash"></i> Table ${order.table.table_number}</span></div>` : ''}
                                         <div class="fw-semibold">${order.customer_name}</div>
                                         <div class="text-muted small">${order.contact_number}</div>
                                     </td>
@@ -1093,9 +1110,17 @@
                                     <td>${paymentBadge}</td>
                                     <td class="text-secondary small">${placedTime}</td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-success complete-order-btn px-3 fw-medium" data-id="${order.id}">
-                                            <i class="bi bi-check-lg me-1"></i> Complete Order
-                                        </button>
+                                        ${order.status === 'completed' ? `
+                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill" style="font-size: 0.75rem;"><i class="bi bi-check-circle-fill me-1"></i> Completed</span>
+                                        ` : (order.status === 'ready' ? `
+                                            <button type="button" class="btn btn-sm btn-success complete-order-btn px-3 fw-medium" data-id="${order.id}">
+                                                <i class="bi bi-check-lg me-1"></i> Complete Order
+                                            </button>
+                                        ` : `
+                                            <button type="button" class="btn btn-sm btn-outline-secondary px-3 fw-medium" disabled title="Order must be prepared by the kitchen first" style="cursor: not-allowed; opacity: 0.65;">
+                                                <i class="bi bi-hourglass-split"></i> Preparing
+                                            </button>
+                                        `)}
                                     </td>
                                 </tr>
                             `);
@@ -1179,61 +1204,17 @@
                 loadPendingOrders();
             });
 
+
+
             // Initial load of orders
             loadPendingOrders();
+
+            // Background Live Sync polling every 4 seconds
+            setInterval(function() {
+                loadPendingOrders();
+            }, 4000);
         });
     </script>
 
-    <!-- Modifiers Modal -->
-    <div class="modal fade" id="modifiersModal" tabindex="-1" aria-labelledby="modifiersModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold" id="modifiersModalLabel">Customize Item</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <h4 id="modifier-item-name" class="fw-bold text-success mb-3" style="color: #15803d;">Item Name</h4>
-                    
-                    <div class="mb-4">
-                        <label class="form-label text-secondary small fw-semibold">SPICINESS LEVEL</label>
-                        <div class="d-flex gap-2">
-                            <input type="radio" class="btn-check" name="spice_level" id="spice-mild" value="Mild" checked>
-                            <label class="btn btn-outline-secondary w-100" for="spice-mild">Mild</label>
-                            
-                            <input type="radio" class="btn-check" name="spice_level" id="spice-medium" value="Medium">
-                            <label class="btn btn-outline-secondary w-100" for="spice-medium">Medium</label>
-                            
-                            <input type="radio" class="btn-check" name="spice_level" id="spice-hot" value="Hot">
-                            <label class="btn btn-outline-secondary w-100" for="spice-hot">Hot</label>
-                        </div>
-                    </div>
-
-                    <div class="mb-2">
-                        <label class="form-label text-secondary small fw-semibold">ADDITIONAL ADD-ONS</label>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="addon-cheese" value="Extra Cheese">
-                            <label class="form-check-label" for="addon-cheese">Extra Cheese (+₹30.00)</label>
-                        </div>
-                        <div class="form-check mb-2">
-                            <input class="form-check-input" type="checkbox" id="addon-onions" value="No Onions">
-                            <label class="form-check-label" for="addon-onions">No Onions</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="addon-sauce" value="Extra Sauce">
-                            <label class="form-check-label" for="addon-sauce">Extra Sauce</label>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-success text-white fw-semibold w-100 py-2.5 rounded-3" id="confirm-modifiers-btn" style="background-color: #15803d;">
-                        <i class="bi bi-cart-plus me-1"></i> Add to Order
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
 </body>
-</html>
 </html>

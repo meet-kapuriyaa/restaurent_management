@@ -58,12 +58,16 @@ Route::middleware('auth')->group(function () {
         Route::post('/tables', [AdminController::class, 'storeTable'])->name('admin.tables.store');
         Route::put('/tables/{table}', [AdminController::class, 'updateTable'])->name('admin.tables.update');
         Route::delete('/tables/{table}', [AdminController::class, 'deleteTable'])->name('admin.tables.delete');
+        Route::patch('/tables/{table}/status', [AdminController::class, 'toggleTableStatus'])->name('admin.tables.status');
         
         // Order Controls
         Route::get('/orders/{order}/invoice', [AdminController::class, 'invoice'])->name('admin.orders.invoice');
         Route::patch('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
         Route::patch('/orders/{order}/payment', [AdminController::class, 'updateOrderPayment'])->name('admin.orders.payment');
         Route::delete('/orders/{order}', [AdminController::class, 'deleteOrder'])->name('admin.orders.delete');
+
+        // CRM Controls
+        Route::get('/crm', [AdminController::class, 'crmIndex'])->name('admin.crm.index');
 
         // Access Control & User Role Management
         Route::post('/permissions', [AdminController::class, 'updatePermissions'])->name('admin.permissions.update');

@@ -51,6 +51,7 @@ class AdminController extends Controller
 
         $users = \App\Models\User::orderBy('name')->get();
         $permissions = \App\Models\RolePermission::all();
+        $customers = \App\Models\Customer::orderBy('total_spend', 'desc')->get();
 
         // Query Chart.js Analytics Data
         $dailySales = Order::where('status', 'completed')
@@ -73,6 +74,29 @@ class AdminController extends Controller
 
         $tables = Table::orderBy('table_number')->get();
 
+        // Query Hourly sales distribution (busy hours) - database driver agnostic
+        if (DB::connection()->getDriverName() === 'sqlite') {
+            $hourlySales = Order::where('status', 'completed')
+                ->select(DB::raw('CAST(strftime("%H", created_at) AS INTEGER) as hour'), DB::raw('COUNT(*) as count'), DB::raw('SUM(total_amount) as total'))
+                ->groupBy('hour')
+                ->orderBy('hour', 'asc')
+                ->get();
+        } else {
+            $hourlySales = Order::where('status', 'completed')
+                ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as count'), DB::raw('SUM(total_amount) as total'))
+                ->groupBy('hour')
+                ->orderBy('hour', 'asc')
+                ->get();
+        }
+
+        // Query Waiter performance ranking
+        $waiterPerformance = DB::table('orders')
+            ->join('users', 'orders.user_id', '=', 'users.id')
+            ->select('users.name', DB::raw('COUNT(*) as total_orders'), DB::raw('SUM(orders.total_amount) as total_revenue'))
+            ->groupBy('users.name')
+            ->orderBy('total_revenue', 'desc')
+            ->get();
+
         return view('admin', compact(
             'foodItems', 
             'orders', 
@@ -84,7 +108,10 @@ class AdminController extends Controller
             'dailySales',
             'topSelling',
             'availableRoles',
-            'tables'
+            'tables',
+            'customers',
+            'hourlySales',
+            'waiterPerformance'
         ));
     }
 
@@ -161,10 +188,16 @@ class AdminController extends Controller
 
         try {
             $updateData = ['status' => $request->status];
+            $wasPaid = $order->payment_status === 'paid';
             if ($request->status === 'completed') {
                 $updateData['payment_status'] = 'paid';
             }
             $order->update($updateData);
+
+            if ($order->payment_status === 'paid' && !$wasPaid) {
+                \App\Models\Customer::recordOrderPayment($order);
+            }
+
             return response()->json(['success' => true, 'message' => 'Order status updated successfully!']);
         } catch (\Exception $e) {
             Log::error('Admin failed to update order status: ' . $e->getMessage());
@@ -187,7 +220,12 @@ class AdminController extends Controller
             if ($request->filled('payment_method')) {
                 $updateData['payment_method'] = $request->payment_method;
             }
+            $wasPaid = $order->payment_status === 'paid';
             $order->update($updateData);
+
+            if ($request->payment_status === 'paid' && !$wasPaid) {
+                \App\Models\Customer::recordOrderPayment($order);
+            }
 
             // Releasing the associated table once payment is completed
             if ($request->payment_status === 'paid' && $order->table) {
@@ -280,6 +318,31 @@ class AdminController extends Controller
         } catch (\Exception $e) {
             Log::error('Admin failed to delete table: ' . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to delete table.'], 500);
+        }
+    }
+
+    public function toggleTableStatus(Table $table)
+    {
+        if (!Auth::user()->hasPermission('can_update')) {
+            return response()->json(['success' => false, 'message' => 'Access Denied: You do not have permission to update items.'], 403);
+        }
+
+        if ($table->status === 'occupied') {
+            return response()->json(['success' => false, 'message' => 'Cannot deactivate table while it is occupied.'], 400);
+        }
+
+        try {
+            $newStatus = $table->status === 'available' ? 'unavailable' : 'available';
+            $table->update(['status' => $newStatus]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Table status changed to ' . ucfirst($newStatus) . ' successfully!',
+                'status' => $newStatus
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Admin failed to toggle table status: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to toggle table status.'], 500);
         }
     }
 
@@ -444,4 +507,16 @@ class AdminController extends Controller
             return response()->json(['success' => false, 'message' => 'Failed to create role.'], 500);
         }
     }
+
+
+    public function crmIndex(Request $request)
+    {
+        if (!Auth::user()->hasPermission('admin_panel')) {
+            return response()->json(['success' => false, 'message' => 'Access Denied.'], 403);
+        }
+
+        $customers = \App\Models\Customer::orderBy('total_spend', 'desc')->get();
+        return response()->json($customers);
+    }
+
 }

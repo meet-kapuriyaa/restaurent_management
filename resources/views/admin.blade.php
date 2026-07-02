@@ -162,6 +162,54 @@
         .is-invalid {
             border-color: #ef4444 !important;
         }
+
+        /* Rounded square action buttons matching the user reference image style */
+        .btn-action-square {
+            width: 38px;
+            height: 38px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            border: none;
+            color: #ffffff !important;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 0;
+            margin: 0 2px;
+            text-decoration: none;
+        }
+
+        .btn-action-square i {
+            font-size: 1.15rem;
+        }
+
+        /* Green status button */
+        .btn-action-status {
+            background-color: #2ecc71; /* Emerald green */
+        }
+        .btn-action-status:hover {
+            background-color: #27ae60;
+            transform: translateY(-1px);
+        }
+
+        /* Cyan edit button */
+        .btn-action-edit {
+            background-color: #00d2fc; /* Vibrant cyan */
+        }
+        .btn-action-edit:hover {
+            background-color: #00b5da;
+            transform: translateY(-1px);
+        }
+
+        /* Red delete button */
+        .btn-action-delete {
+            background-color: #ff4757; /* Warm coral red */
+        }
+        .btn-action-delete:hover {
+            background-color: #e03d4b;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body class="pb-5">
@@ -249,6 +297,11 @@
                         <i class="bi bi-grid-3x3-gap me-1"></i> Tables Setup
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link-admin" id="crm-tab" data-bs-toggle="tab" data-bs-target="#crm-pane" type="button" role="tab" aria-controls="crm-pane" aria-selected="false">
+                        <i class="bi bi-people-fill me-1"></i> Customer CRM
+                    </button>
+                </li>
             </ul>
         </div>
 
@@ -312,6 +365,47 @@
                     </div>
                 </div>
 
+                <!-- New Analytics Row -->
+                <div class="row g-4 mb-5">
+                    <div class="col-lg-6">
+                        <div class="card-admin p-4">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-clock-fill text-success me-2" style="color: #15803d;"></i>Hourly Sales Distribution (Busy Hours)</h5>
+                            <div style="height: 300px; position: relative;">
+                                <canvas id="hourlySalesChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card-admin p-4" style="height: 100%;">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-trophy-fill text-success me-2" style="color: #15803d;"></i>Top Staff/Waiter Performance</h5>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Waiter Name</th>
+                                            <th class="text-center">Orders Handled</th>
+                                            <th class="text-end">Revenue Generated</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($waiterPerformance as $performance)
+                                            <tr>
+                                                <td class="fw-semibold text-dark"><i class="bi bi-person-badge text-muted me-1"></i> {{ $performance->name }}</td>
+                                                <td class="text-center">{{ $performance->total_orders }}</td>
+                                                <td class="text-end fw-semibold text-success">₹{{ number_format($performance->total_revenue, 2) }}</td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="3" class="text-center py-4 text-secondary small">No waiter activity logged yet.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card-admin">
                     <h4 class="fw-bold mb-3"><i class="bi bi-rocket-takeoff-fill text-indigo me-2"></i>Quick Terminal Shortcuts</h4>
                     <p class="text-secondary">Open KDS or waiter windows below to complete the simulated dining workflow.</p>
@@ -361,26 +455,28 @@
                                             @endif
                                         </td>
                                         <td class="text-end">
-                                            <div class="d-flex justify-content-end gap-2">
-                                                <button type="button" class="btn {{ $item->status === 'available' ? 'btn-outline-warning' : 'btn-outline-success' }} toggle-status-btn" 
-                                                        style="font-size: 0.72rem; padding: 0.15rem 0.35rem; font-weight: 600; line-height: 1.2;"
+                                            <div class="d-flex justify-content-end gap-1">
+                                                <button type="button" class="btn-action-square btn-action-status toggle-status-btn {{ $item->status === 'unavailable' ? 'inactive' : '' }}" 
                                                         data-id="{{ $item->id }}"
-                                                        title="{{ $item->status === 'available' ? 'Deactivate Item' : 'Activate Item' }}">
+                                                        title="{{ $item->status === 'available' ? 'Deactivate Menu Item' : 'Activate Menu Item' }}">
                                                     @if($item->status === 'available')
-                                                        <i class="bi bi-x-circle-fill"></i> Deactivate
+                                                        <i class="bi bi-eye-fill"></i>
                                                     @else
-                                                        <i class="bi bi-check-circle-fill"></i> Activate
+                                                        <i class="bi bi-eye-slash-fill"></i>
                                                     @endif
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-outline-secondary edit-food-btn" 
+                                                <button type="button" class="btn-action-square btn-action-edit edit-food-btn" 
                                                         data-id="{{ $item->id }}"
                                                         data-name="{{ $item->name }}"
                                                         data-price="{{ $item->price }}"
                                                         data-description="{{ $item->description }}"
-                                                        data-status="{{ $item->status }}">
-                                                    <i class="bi bi-pencil-square"></i>
+                                                        data-status="{{ $item->status }}"
+                                                        title="Edit Menu Item">
+                                                    <i class="bi bi-pencil-fill"></i>
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger delete-food-btn" data-id="{{ $item->id }}">
+                                                <button type="button" class="btn-action-square btn-action-delete delete-food-btn" 
+                                                        data-id="{{ $item->id }}"
+                                                        title="Delete Menu Item">
                                                     <i class="bi bi-trash-fill"></i>
                                                 </button>
                                             </div>
@@ -613,17 +709,36 @@
                                                 <td>
                                                     @if($tbl->status === 'available')
                                                         <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Available</span>
-                                                    @else
+                                                    @elseif($tbl->status === 'occupied')
                                                         <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill"><i class="bi bi-dash-circle-fill me-1"></i> Occupied</span>
+                                                    @else
+                                                        <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2 rounded-pill"><i class="bi bi-eye-slash-fill me-1"></i> Inactive</span>
                                                     @endif
                                                 </td>
                                                 <td class="text-end pe-3">
-                                                    <div class="d-flex justify-content-end gap-2">
-                                                        <button type="button" class="btn btn-sm btn-outline-primary edit-table-btn" data-id="{{ $tbl->id }}" data-number="{{ $tbl->table_number }}" data-capacity="{{ $tbl->capacity }}" style="border-radius: 8px;">
-                                                            <i class="bi bi-pencil-fill"></i> Edit
+                                                    <div class="d-flex justify-content-end gap-1">
+                                                        <button type="button" class="btn-action-square btn-action-status toggle-table-status-btn {{ $tbl->status === 'unavailable' ? 'inactive' : '' }}" 
+                                                                data-id="{{ $tbl->id }}"
+                                                                data-status="{{ $tbl->status }}"
+                                                                title="{{ $tbl->status === 'unavailable' ? 'Activate Table' : 'Deactivate Table' }}">
+                                                            @if($tbl->status === 'unavailable')
+                                                                <i class="bi bi-eye-slash-fill"></i>
+                                                            @else
+                                                                <i class="bi bi-eye-fill"></i>
+                                                            @endif
                                                         </button>
-                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-table-btn" data-id="{{ $tbl->id }}" data-status="{{ $tbl->status }}" style="border-radius: 8px;">
-                                                            <i class="bi bi-trash-fill"></i> Delete
+                                                        <button type="button" class="btn-action-square btn-action-edit edit-table-btn" 
+                                                                data-id="{{ $tbl->id }}" 
+                                                                data-number="{{ $tbl->table_number }}" 
+                                                                data-capacity="{{ $tbl->capacity }}"
+                                                                title="Edit Table Details">
+                                                            <i class="bi bi-pencil-fill"></i>
+                                                        </button>
+                                                        <button type="button" class="btn-action-square btn-action-delete delete-table-btn" 
+                                                                data-id="{{ $tbl->id }}" 
+                                                                data-status="{{ $tbl->status }}"
+                                                                title="Delete Table">
+                                                            <i class="bi bi-trash-fill"></i>
                                                         </button>
                                                     </div>
                                                 </td>
@@ -637,6 +752,55 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pane 6: Customer CRM -->
+            <div class="tab-pane fade" id="crm-pane" role="tabpanel" aria-labelledby="crm-tab" tabindex="0">
+                <div class="card-admin p-4">
+                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3 mb-4">
+                        <div>
+                            <h4 class="fw-bold mb-1"><i class="bi bi-people-fill text-success me-2" style="color: #15803d;"></i>Customer CRM</h4>
+                            <p class="text-secondary small mb-0">Monitor customer visits and total spends.</p>
+                        </div>
+                        <div style="width: 250px;">
+                            <input type="text" id="crm-search-input" class="form-control" placeholder="Search customer name or phone..." style="border-radius: 8px;">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle" id="crm-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Phone Number</th>
+                                    <th>Customer Name</th>
+                                    <th class="text-center">Total Visits</th>
+                                    <th class="text-end">Total Spend</th>
+                                    <th>Member Since</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($customers as $customer)
+                                    <tr>
+                                        <td class="fw-semibold text-dark"><i class="bi bi-telephone text-muted me-1"></i> {{ $customer->phone_number }}</td>
+                                        <td>
+                                            {{ $customer->name }}
+                                            @if($customer->total_spend >= 1000)
+                                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill ms-1" style="font-size: 0.65rem;">VIP</span>
+                                            @endif
+                                        </td>
+                                        <td class="text-center fw-medium">{{ $customer->total_visits }}</td>
+                                        <td class="text-end fw-semibold text-success">₹{{ number_format($customer->total_spend, 2) }}</td>
+                                        <td class="text-secondary small">{{ $customer->created_at->format('d M Y') }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-secondary">No customers registered in the CRM directory yet.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -719,6 +883,7 @@
                 </div>
             </form>
         </div>
+    </div>
     <!-- Modal 3: Edit Table -->
     <div class="modal fade" id="editTableModal" tabindex="-1" aria-labelledby="editTableModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -955,14 +1120,14 @@
                         
                         if (newStatus === 'available') {
                             badgeCell.html('<span class="badge bg-success-subtle text-success">Available</span>');
-                            btn.removeClass('btn-outline-success').addClass('btn-outline-warning');
-                            btn.attr('title', 'Deactivate Item');
-                            btn.html('<i class="bi bi-x-circle-fill"></i> Deactivate');
+                            btn.removeClass('inactive');
+                            btn.attr('title', 'Deactivate Menu Item');
+                            btn.html('<i class="bi bi-eye-fill"></i>');
                         } else {
                             badgeCell.html('<span class="badge bg-danger-subtle text-danger">Unavailable</span>');
-                            btn.removeClass('btn-outline-warning').addClass('btn-outline-success');
-                            btn.attr('title', 'Activate Item');
-                            btn.html('<i class="bi bi-check-circle-fill"></i> Activate');
+                            btn.addClass('inactive');
+                            btn.attr('title', 'Activate Menu Item');
+                            btn.html('<i class="bi bi-eye-slash-fill"></i>');
                         }
 
                         row.find('.edit-food-btn').attr('data-status', newStatus);
@@ -1003,9 +1168,10 @@
 
                         if (newStatus === 'completed') {
                             const paymentBtn = row.find('.order-payment-btn');
-                            if (paymentBtn.length && paymentBtn.data('status') === 'paid') {
-                                paymentBtn.removeClass('btn-danger').addClass('btn-success');
-                                paymentBtn.attr('data-status', 'unpaid');
+                            if (paymentBtn.length && (paymentBtn.attr('data-status') === 'unpaid' || paymentBtn.data('status') === 'unpaid')) {
+                                paymentBtn.removeClass('btn-danger btn-outline-danger').addClass('btn-success');
+                                paymentBtn.attr('data-status', 'paid');
+                                paymentBtn.data('status', 'paid');
                                 paymentBtn.html('<i class="bi bi-check-circle-fill"></i> Paid');
                             }
                         }
@@ -1025,7 +1191,7 @@
                 });
             });
 
-            // Inline Order Payment Status Change handler with Payment Mode Picker Modal
+            // Inline Order Payment Status Change handler - directly mark as paid
             $(document).on('click', '.order-payment-btn', function() {
                 const btn = $(this);
                 const orderId = btn.data('id');
@@ -1036,76 +1202,46 @@
                     return;
                 }
 
-                // Show SweetAlert Payment Method Selection Dropdown
-                Swal.fire({
-                    title: 'Select Payment Method',
-                    text: 'Choose the customer payment mode:',
-                    icon: 'question',
-                    input: 'select',
-                    inputOptions: {
-                        'cash': 'Cash',
-                        'card': 'Credit / Debit Card',
-                        'upi': 'UPI QR Checkout'
-                    },
-                    inputPlaceholder: 'Select payment method',
-                    showCancelButton: true,
-                    confirmButtonColor: '#15803d',
-                    cancelButtonColor: '#64748b',
-                    confirmButtonText: 'Confirm Payment',
-                    inputValidator: (value) => {
-                        return new Promise((resolve) => {
-                            if (value) {
-                                resolve();
-                            } else {
-                                resolve('You must select a payment method.');
-                            }
-                        });
-                    }
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        const paymentMethod = result.value;
-                        const row = btn.closest('tr');
-                        const amount = parseFloat(row.find('.order-amount-cell').attr('data-amount')) || 0;
+                const row = btn.closest('tr');
+                const amount = parseFloat(row.find('.order-amount-cell').attr('data-amount')) || 0;
 
-                        $.ajax({
-                            url: `/admin/orders/${orderId}/payment`,
-                            type: 'POST',
-                            data: {
-                                _method: 'PATCH',
-                                payment_status: 'paid',
-                                payment_method: paymentMethod
-                            },
-                            headers: {
-                                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                            },
-                            success: function(res) {
-                                const Toast = Swal.mixin({
-                                    toast: true,
-                                    position: 'bottom-end',
-                                    showConfirmButton: false,
-                                    timer: 2000
-                                });
-                                Toast.fire({ icon: 'success', title: res.message || 'Payment recorded successfully!' });
-                                
-                                // Update button state
-                                btn.removeClass('btn-danger btn-outline-danger').addClass('btn-success');
-                                btn.attr('data-status', 'paid');
-                                btn.data('status', 'paid');
-                                btn.html('<i class="bi bi-check-circle-fill"></i> Paid');
-                                
-                                // If the order status isn't completed yet, auto-complete it
-                                const statusSelect = row.find('.order-status-select');
-                                if (statusSelect.length && statusSelect.attr('data-current-status') !== 'completed') {
-                                    statusSelect.val('completed');
-                                    statusSelect.attr('data-current-status', 'completed');
-                                    updateActiveOrders(-1);
-                                    addToRevenue(amount);
-                                }
-                            },
-                            error: function() {
-                                Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to record payment.' });
-                            }
+                $.ajax({
+                    url: `/admin/orders/${orderId}/payment`,
+                    type: 'POST',
+                    data: {
+                        _method: 'PATCH',
+                        payment_status: 'paid',
+                        payment_method: 'cash' // Defaulting payment method to cash
+                    },
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(res) {
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'bottom-end',
+                            showConfirmButton: false,
+                            timer: 2000
                         });
+                        Toast.fire({ icon: 'success', title: res.message || 'Payment recorded successfully!' });
+                        
+                        // Update button state
+                        btn.removeClass('btn-danger btn-outline-danger').addClass('btn-success');
+                        btn.attr('data-status', 'paid');
+                        btn.data('status', 'paid');
+                        btn.html('<i class="bi bi-check-circle-fill"></i> Paid');
+                        
+                        // If the order status isn't completed yet, auto-complete it
+                        const statusSelect = row.find('.order-status-select');
+                        if (statusSelect.length && statusSelect.attr('data-current-status') !== 'completed') {
+                            statusSelect.val('completed');
+                            statusSelect.attr('data-current-status', 'completed');
+                            updateActiveOrders(-1);
+                            addToRevenue(amount);
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({ icon: 'error', title: 'Error', text: 'Failed to record payment.', confirmButtonColor: '#dc2626' });
                     }
                 });
             });
@@ -1307,6 +1443,45 @@
                     plugins: {
                         legend: {
                             position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Hourly Sales Chart (Busy Hours)
+            const hourlySalesRaw = @json($hourlySales);
+            const hoursLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+            const hourlyRevenueData = Array(24).fill(0);
+            
+            hourlySalesRaw.forEach(item => {
+                const h = parseInt(item.hour);
+                if (h >= 0 && h < 24) {
+                    hourlyRevenueData[h] = parseFloat(item.total) || 0;
+                }
+            });
+
+            const ctx3 = document.getElementById('hourlySalesChart').getContext('2d');
+            new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: hoursLabels,
+                    datasets: [{
+                        label: 'Hourly Sales (₹)',
+                        data: hourlyRevenueData,
+                        backgroundColor: '#10b981',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#f1f5f9' }
+                        },
+                        x: {
+                            grid: { display: false }
                         }
                     }
                 }
@@ -1524,6 +1699,8 @@
                 submitHandler: function(form, event) {
                     event.preventDefault();
                     const tableId = $('#edit_table_id').val();
+                    const tableNumber = $('#edit_table_number').val();
+                    const capacity = $('#edit_table_capacity').val();
                     
                     $.ajax({
                         url: `/admin/tables/${tableId}`,
@@ -1531,17 +1708,81 @@
                         data: $(form).serialize(),
                         success: function(res) {
                             $('#editTableModal').modal('hide');
-                            Swal.fire({ icon: 'success', title: 'Success!', text: res.message, confirmButtonColor: '#15803d' })
-                                .then(() => {
-                                    localStorage.setItem('adminActiveTab', 'tables-tab');
-                                    location.reload();
-                                });
+                            Swal.fire({ icon: 'success', title: 'Success!', text: res.message, confirmButtonColor: '#15803d' });
+                            
+                            const editBtn = $(`.edit-table-btn[data-id="${tableId}"]`);
+                            const row = editBtn.closest('tr');
+                            
+                            // Update text in row
+                            row.find('td').eq(0).text(tableNumber);
+                            row.find('td').eq(1).text(capacity + ' Seats');
+                            
+                            // Update attributes on edit button
+                            editBtn.data('number', tableNumber).attr('data-number', tableNumber);
+                            editBtn.data('capacity', capacity).attr('data-capacity', capacity);
                         },
                         error: function(xhr) {
                             Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message || 'Failed to update table.', confirmButtonColor: '#dc2626' });
                         }
                     });
                 }
+            });
+
+            // Toggle Table Status directly
+            $('.toggle-table-status-btn').on('click', function() {
+                const tableId = $(this).data('id');
+                const btn = $(this);
+                const status = btn.data('status');
+
+                if (status === 'occupied') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Cannot Deactivate Table',
+                        text: 'This table is currently occupied and its status cannot be changed.',
+                        confirmButtonColor: '#dc2626'
+                    });
+                    return;
+                }
+
+                $.ajax({
+                    url: `/admin/tables/${tableId}/status`,
+                    type: 'PATCH',
+                    success: function(res) {
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'bottom-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                        Toast.fire({ icon: 'success', title: res.message || 'Status updated!' });
+
+                        const newStatus = res.status;
+                        const row = btn.closest('tr');
+                        const badgeCell = row.find('td').eq(2);
+
+                        if (newStatus === 'available') {
+                            badgeCell.html('<span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Available</span>');
+                            btn.removeClass('inactive');
+                            btn.attr('title', 'Deactivate Table');
+                            btn.html('<i class="bi bi-eye-fill"></i>');
+                            btn.data('status', 'available');
+                            btn.attr('data-status', 'available');
+                        } else {
+                            badgeCell.html('<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle px-3 py-2 rounded-pill"><i class="bi bi-eye-slash-fill me-1"></i> Inactive</span>');
+                            btn.addClass('inactive');
+                            btn.attr('title', 'Activate Table');
+                            btn.html('<i class="bi bi-eye-slash-fill"></i>');
+                            btn.data('status', 'unavailable');
+                            btn.attr('data-status', 'unavailable');
+                        }
+
+                        // Update delete button status
+                        row.find('.delete-table-btn').data('status', newStatus).attr('data-status', newStatus);
+                    },
+                    error: function(xhr) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message || 'Failed to update status.', confirmButtonColor: '#dc2626' });
+                    }
+                });
             });
 
             // Delete Table Action
@@ -1584,6 +1825,16 @@
                             }
                         });
                     }
+                });
+            });
+
+
+            // CRM Table Search Input Handler
+            $('#crm-search-input').on('keyup', function() {
+                const query = $(this).val().toLowerCase();
+                $('#crm-table tbody tr').each(function() {
+                    const text = $(this).text().toLowerCase();
+                    $(this).toggle(text.indexOf(query) > -1);
                 });
             });
 
