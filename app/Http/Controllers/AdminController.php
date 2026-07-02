@@ -71,6 +71,8 @@ class AdminController extends Controller
         // Fetch distinct available roles dynamically
         $availableRoles = \App\Models\RolePermission::select('role')->distinct()->pluck('role');
 
+        $tables = Table::orderBy('table_number')->get();
+
         return view('admin', compact(
             'foodItems', 
             'orders', 
@@ -81,7 +83,8 @@ class AdminController extends Controller
             'totalFoodItemsCount',
             'dailySales',
             'topSelling',
-            'availableRoles'
+            'availableRoles',
+            'tables'
         ));
     }
 
@@ -212,11 +215,82 @@ class AdminController extends Controller
         }
     }
 
+    public function storeTable(Request $request)
+    {
+        if (!Auth::user()->hasPermission('can_insert')) {
+            return response()->json(['success' => false, 'message' => 'Access Denied: You do not have permission to insert items.'], 403);
+        }
+
+        $request->validate([
+            'table_number' => 'required|string|max:50|unique:tables,table_number',
+            'capacity' => 'required|integer|min:1',
+        ]);
+
+        try {
+            Table::create([
+                'table_number' => $request->table_number,
+                'capacity' => $request->capacity,
+                'status' => 'available',
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Table added successfully!']);
+        } catch (\Exception $e) {
+            Log::error('Admin failed to store table: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to add table.'], 500);
+        }
+    }
+
+    public function updateTable(Request $request, Table $table)
+    {
+        if (!Auth::user()->hasPermission('can_update')) {
+            return response()->json(['success' => false, 'message' => 'Access Denied: You do not have permission to update items.'], 403);
+        }
+
+        $request->validate([
+            'table_number' => 'required|string|max:50|unique:tables,table_number,' . $table->id,
+            'capacity' => 'required|integer|min:1',
+        ]);
+
+        try {
+            $table->update([
+                'table_number' => $request->table_number,
+                'capacity' => $request->capacity,
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Table updated successfully!']);
+        } catch (\Exception $e) {
+            Log::error('Admin failed to update table: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to update table.'], 500);
+        }
+    }
+
+    public function deleteTable(Table $table)
+    {
+        if (!Auth::user()->hasPermission('can_delete')) {
+            return response()->json(['success' => false, 'message' => 'Access Denied: You do not have permission to delete items.'], 403);
+        }
+
+        if ($table->status === 'occupied') {
+            return response()->json(['success' => false, 'message' => 'Cannot delete table while it is occupied.'], 400);
+        }
+
+        try {
+            $table->delete();
+            return response()->json(['success' => true, 'message' => 'Table deleted successfully!']);
+        } catch (\Exception $e) {
+            Log::error('Admin failed to delete table: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to delete table.'], 500);
+        }
+    }
+
     /**
      * Display a printable thermal receipt/invoice for an order.
      */
     public function invoice(Order $order)
     {
+        if ($order->status !== 'completed') {
+            abort(403, 'Invoices can only be printed or downloaded for completed orders.');
+        }
         $order->load(['orderItems.foodItem']);
         return view('invoice', compact('order'));
     }

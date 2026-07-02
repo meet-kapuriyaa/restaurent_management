@@ -244,6 +244,11 @@
                         <i class="bi bi-shield-lock me-1"></i> Access Control
                     </button>
                 </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link-admin" id="tables-tab" data-bs-toggle="tab" data-bs-target="#tables-pane" type="button" role="tab" aria-controls="tables-pane" aria-selected="false">
+                        <i class="bi bi-grid-3x3-gap me-1"></i> Tables Setup
+                    </button>
+                </li>
             </ul>
         </div>
 
@@ -563,6 +568,78 @@
                 </div>
             </div>
 
+            <!-- Pane 5: Tables Setup -->
+            <div class="tab-pane fade" id="tables-pane" role="tabpanel" aria-labelledby="tables-tab" tabindex="0">
+                <div class="row g-4">
+                    <!-- Left Column: Add New Table Form -->
+                    <div class="col-lg-4">
+                        <div class="card border border-light-subtle shadow-sm p-4" style="border-radius: 16px;">
+                            <h4 class="fw-bold text-dark mb-3"><i class="bi bi-plus-circle-fill text-success me-2"></i>Add New Table</h4>
+                            <form id="addTableForm" novalidate>
+                                <div class="mb-3">
+                                    <label for="table_number" class="form-label small fw-semibold text-secondary">TABLE NUMBER</label>
+                                    <input type="text" class="form-control form-control-lg" name="table_number" id="table_number" placeholder="e.g. T6" required style="border-radius: 10px;">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="capacity" class="form-label small fw-semibold text-secondary">SEATING CAPACITY</label>
+                                    <input type="number" class="form-control form-control-lg" name="capacity" id="capacity" min="1" placeholder="e.g. 4" required style="border-radius: 10px;">
+                                </div>
+                                <button type="submit" class="btn btn-success btn-lg w-100 fw-bold mt-2" style="background-color: #15803d; border-radius: 12px;">
+                                    <i class="bi bi-save me-1"></i> Save Table
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Tables Directory -->
+                    <div class="col-lg-8">
+                        <div class="card border border-light-subtle shadow-sm p-4" style="border-radius: 16px;">
+                            <h4 class="fw-bold text-dark mb-4"><i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Tables Directory</h4>
+                            <div class="table-responsive">
+                                <table class="table align-middle" style="min-width: 600px;">
+                                    <thead class="table-light text-secondary small fw-bold">
+                                        <tr>
+                                            <th class="ps-3">TABLE NUMBER</th>
+                                            <th>SEATING CAPACITY</th>
+                                            <th>CURRENT STATUS</th>
+                                            <th class="text-end pe-3">ACTIONS</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="fw-semibold">
+                                        @forelse($tables as $tbl)
+                                            <tr>
+                                                <td class="ps-3 text-dark fw-bold">{{ $tbl->table_number }}</td>
+                                                <td>{{ $tbl->capacity }} Seats</td>
+                                                <td>
+                                                    @if($tbl->status === 'available')
+                                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill"><i class="bi bi-check-circle-fill me-1"></i> Available</span>
+                                                    @else
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-2 rounded-pill"><i class="bi bi-dash-circle-fill me-1"></i> Occupied</span>
+                                                    @endif
+                                                </td>
+                                                <td class="text-end pe-3">
+                                                    <div class="d-flex justify-content-end gap-2">
+                                                        <button type="button" class="btn btn-sm btn-outline-primary edit-table-btn" data-id="{{ $tbl->id }}" data-number="{{ $tbl->table_number }}" data-capacity="{{ $tbl->capacity }}" style="border-radius: 8px;">
+                                                            <i class="bi bi-pencil-fill"></i> Edit
+                                                        </button>
+                                                        <button type="button" class="btn btn-sm btn-outline-danger delete-table-btn" data-id="{{ $tbl->id }}" data-status="{{ $tbl->status }}" style="border-radius: 8px;">
+                                                            <i class="bi bi-trash-fill"></i> Delete
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="4" class="text-center py-4 text-secondary">No tables configured in system database.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </div>
     </div>
@@ -639,6 +716,31 @@
                 <div class="modal-footer border-top-0 pt-0">
                     <button type="button" class="btn btn-outline-secondary px-3" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary bg-success px-4 text-white" style="background-color: #15803d;">Update Item</button>
+                </div>
+            </form>
+        </div>
+    <!-- Modal 3: Edit Table -->
+    <div class="modal fade" id="editTableModal" tabindex="-1" aria-labelledby="editTableModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <form id="editTableForm" class="modal-content" novalidate style="border-radius: 16px;">
+                <input type="hidden" id="edit_table_id">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="editTableModalLabel">Edit Table Setup</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="edit_table_number" class="form-label small fw-semibold text-secondary">TABLE NUMBER</label>
+                        <input type="text" class="form-control" name="table_number" id="edit_table_number" required style="border-radius: 10px;">
+                    </div>
+                    <div class="mb-2">
+                        <label for="edit_table_capacity" class="form-label small fw-semibold text-secondary">SEATING CAPACITY</label>
+                        <input type="number" class="form-control" name="capacity" id="edit_table_capacity" min="1" required style="border-radius: 10px;">
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary px-3" data-bs-dismiss="modal" style="border-radius: 10px;">Cancel</button>
+                    <button type="submit" class="btn btn-primary bg-success px-4 text-white" style="background-color: #15803d; border-radius: 10px; border: none;">Update Table</button>
                 </div>
             </form>
         </div>
@@ -1378,6 +1480,111 @@
 
                 // Trigger form submit to load all data via AJAX
                 $('#order-filter-form').submit();
+            });
+
+            /* =========================================================================
+             * Table Management Actions
+             * ========================================================================= */
+
+            // Add Table AJAX Validation & Submit
+            $('#addTableForm').validate({
+                ...validationOptions,
+                submitHandler: function(form, event) {
+                    event.preventDefault();
+                    
+                    $.ajax({
+                        url: "{{ route('admin.tables.store') }}",
+                        type: 'POST',
+                        data: $(form).serialize(),
+                        success: function(res) {
+                            Swal.fire({ icon: 'success', title: 'Success!', text: res.message, confirmButtonColor: '#15803d' })
+                                .then(() => {
+                                    localStorage.setItem('adminActiveTab', 'tables-tab');
+                                    location.reload();
+                                });
+                        },
+                        error: function(xhr) {
+                            Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message || 'Failed to save table.', confirmButtonColor: '#dc2626' });
+                        }
+                    });
+                }
+            });
+
+            // Populating Edit Table Modal
+            $('.edit-table-btn').on('click', function() {
+                $('#edit_table_id').val($(this).data('id'));
+                $('#edit_table_number').val($(this).data('number'));
+                $('#edit_table_capacity').val($(this).data('capacity'));
+                $('#editTableModal').modal('show');
+            });
+
+            // Edit Table Submit
+            $('#editTableForm').validate({
+                ...validationOptions,
+                submitHandler: function(form, event) {
+                    event.preventDefault();
+                    const tableId = $('#edit_table_id').val();
+                    
+                    $.ajax({
+                        url: `/admin/tables/${tableId}`,
+                        type: 'PUT',
+                        data: $(form).serialize(),
+                        success: function(res) {
+                            $('#editTableModal').modal('hide');
+                            Swal.fire({ icon: 'success', title: 'Success!', text: res.message, confirmButtonColor: '#15803d' })
+                                .then(() => {
+                                    localStorage.setItem('adminActiveTab', 'tables-tab');
+                                    location.reload();
+                                });
+                        },
+                        error: function(xhr) {
+                            Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message || 'Failed to update table.', confirmButtonColor: '#dc2626' });
+                        }
+                    });
+                }
+            });
+
+            // Delete Table Action
+            $('.delete-table-btn').on('click', function() {
+                const tableId = $(this).data('id');
+                const status = $(this).data('status');
+
+                if (status === 'occupied') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Cannot Delete Table',
+                        text: 'This table is currently occupied and cannot be deleted.',
+                        confirmButtonColor: '#dc2626'
+                    });
+                    return;
+                }
+
+                Swal.fire({
+                    title: 'Delete Table?',
+                    text: 'Are you sure you want to remove this table? This action cannot be undone.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#dc2626',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: 'Yes, delete it'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $.ajax({
+                            url: `/admin/tables/${tableId}`,
+                            type: 'DELETE',
+                            success: function(res) {
+                                Swal.fire({ icon: 'success', title: 'Deleted!', text: res.message, confirmButtonColor: '#15803d' })
+                                    .then(() => {
+                                        localStorage.setItem('adminActiveTab', 'tables-tab');
+                                        location.reload();
+                                    });
+                            },
+                            error: function(xhr) {
+                                Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message || 'Failed to delete table.', confirmButtonColor: '#dc2626' });
+                            }
+                        });
+                    }
+                });
             });
 
         });

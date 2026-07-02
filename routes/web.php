@@ -54,6 +54,11 @@ Route::middleware('auth')->group(function () {
         Route::delete('/food-items/{foodItem}', [AdminController::class, 'deleteFoodItem'])->name('admin.food-items.delete');
         Route::patch('/food-items/{foodItem}/status', [AdminController::class, 'toggleFoodItemStatus'])->name('admin.food-items.status');
         
+        // Table CRUD
+        Route::post('/tables', [AdminController::class, 'storeTable'])->name('admin.tables.store');
+        Route::put('/tables/{table}', [AdminController::class, 'updateTable'])->name('admin.tables.update');
+        Route::delete('/tables/{table}', [AdminController::class, 'deleteTable'])->name('admin.tables.delete');
+        
         // Order Controls
         Route::get('/orders/{order}/invoice', [AdminController::class, 'invoice'])->name('admin.orders.invoice');
         Route::patch('/orders/{order}/status', [AdminController::class, 'updateOrderStatus'])->name('admin.orders.status');
