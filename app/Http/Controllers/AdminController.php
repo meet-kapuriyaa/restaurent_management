@@ -75,9 +75,16 @@ class AdminController extends Controller
         $tables = Table::orderBy('table_number')->get();
 
         // Query Hourly sales distribution (busy hours) - database driver agnostic
-        if (DB::connection()->getDriverName() === 'sqlite') {
+        $driver = DB::connection()->getDriverName();
+        if ($driver === 'sqlite') {
             $hourlySales = Order::where('status', 'completed')
                 ->select(DB::raw('CAST(strftime("%H", created_at) AS INTEGER) as hour'), DB::raw('COUNT(*) as count'), DB::raw('SUM(total_amount) as total'))
+                ->groupBy('hour')
+                ->orderBy('hour', 'asc')
+                ->get();
+        } elseif ($driver === 'pgsql') {
+            $hourlySales = Order::where('status', 'completed')
+                ->select(DB::raw('CAST(EXTRACT(HOUR FROM created_at) AS INTEGER) as hour'), DB::raw('COUNT(*) as count'), DB::raw('SUM(total_amount) as total'))
                 ->groupBy('hour')
                 ->orderBy('hour', 'asc')
                 ->get();
