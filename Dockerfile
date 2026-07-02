@@ -30,4 +30,4 @@ RUN composer install --no-dev --optimize-autoloader
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Automatically run migrations before starting Apache
-ENTRYPOINT ["sh", "-c", "php artisan migrate --seed --force && apache2-foreground"]
+ENTRYPOINT ["sh", "-c", "php artisan config:clear && php artisan route:clear && php artisan view:clear && php artisan migrate --force && apache2-foreground"]
