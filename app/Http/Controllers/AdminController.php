@@ -102,7 +102,7 @@ class AdminController extends Controller
                 DB::raw("COALESCE(categories.name, 'Uncategorized') as category_name"),
                 DB::raw('SUM(order_items.quantity * order_items.price) as total_sales')
             )
-            ->groupBy('category_name')
+            ->groupBy(DB::raw("COALESCE(categories.name, 'Uncategorized')"))
             ->orderBy('total_sales', 'desc')
             ->get();
 
@@ -133,7 +133,7 @@ class AdminController extends Controller
         } elseif ($driver === 'pgsql') {
             $hourlySales = Order::where('status', 'completed')
                 ->select(DB::raw('CAST(EXTRACT(HOUR FROM created_at) AS INTEGER) as hour'), DB::raw('COUNT(*) as count'), DB::raw('SUM(total_amount) as total'))
-                ->groupBy('hour')
+                ->groupBy(DB::raw('CAST(EXTRACT(HOUR FROM created_at) AS INTEGER)'))
                 ->orderBy('hour', 'asc')
                 ->get();
         } else {
