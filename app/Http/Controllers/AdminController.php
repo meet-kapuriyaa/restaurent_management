@@ -63,13 +63,24 @@ class AdminController extends Controller
         $startOfWeek = now()->startOfWeek();
         $endOfWeek = now()->endOfWeek();
 
-        $currentWeekSales = Order::where('status', 'completed')
-            ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
-            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total_amount) as total'))
-            ->groupBy('date')
-            ->get()
-            ->pluck('total', 'date')
-            ->toArray();
+        $driver = DB::connection()->getDriverName();
+        if ($driver === 'pgsql') {
+            $currentWeekSales = Order::where('status', 'completed')
+                ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+                ->select(DB::raw('CAST(created_at AS DATE) as date'), DB::raw('SUM(total_amount) as total'))
+                ->groupBy(DB::raw('CAST(created_at AS DATE)'))
+                ->get()
+                ->pluck('total', 'date')
+                ->toArray();
+        } else {
+            $currentWeekSales = Order::where('status', 'completed')
+                ->whereBetween('created_at', [$startOfWeek, $endOfWeek])
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total_amount) as total'))
+                ->groupBy('date')
+                ->get()
+                ->pluck('total', 'date')
+                ->toArray();
+        }
 
         $dailySales = collect();
         for ($i = 0; $i < 7; $i++) {
