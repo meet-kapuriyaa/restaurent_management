@@ -84,12 +84,11 @@ class AdminController extends Controller
             ]);
         }
 
-        // Query category sales distribution for pie/doughnut chart
         $categorySales = DB::table('order_items')
             ->join('food_items', 'order_items.food_item_id', '=', 'food_items.id')
             ->leftJoin('categories', 'food_items.category_id', '=', 'categories.id')
             ->select(
-                DB::raw('COALESCE(categories.name, "Uncategorized") as category_name'),
+                DB::raw("COALESCE(categories.name, 'Uncategorized') as category_name"),
                 DB::raw('SUM(order_items.quantity * order_items.price) as total_sales')
             )
             ->groupBy('category_name')
