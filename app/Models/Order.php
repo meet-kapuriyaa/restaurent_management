@@ -19,10 +19,19 @@ class Order extends Model
         'discount_amount',
         'tip_amount',
         'user_id',
+        'daily_no',
     ];
 
     protected static function booted()
     {
+        static::creating(function ($order) {
+            if (empty($order->daily_no)) {
+                $date = $order->created_at ? \Carbon\Carbon::parse($order->created_at)->toDateString() : now()->toDateString();
+                $maxDailyNo = static::whereDate('created_at', $date)->max('daily_no');
+                $order->daily_no = ($maxDailyNo ?? 0) + 1;
+            }
+        });
+
         static::deleting(function ($order) {
             $order->orderItems()->delete();
         });

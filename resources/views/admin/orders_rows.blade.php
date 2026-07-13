@@ -1,6 +1,6 @@
 @forelse($orders as $order)
     <tr>
-        <td class="fw-bold">#ORD-{{ $order->id }}</td>
+        <td class="fw-bold">#ORD-{{ $order->daily_no }}</td>
         <td>
             @if($order->table)
                 <div class="mb-1">

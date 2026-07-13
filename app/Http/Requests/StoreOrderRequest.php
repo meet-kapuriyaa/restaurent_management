@@ -24,7 +24,7 @@ class StoreOrderRequest extends FormRequest
     {
         return [
             'customer_name' => 'required|string|max:255',
-            'contact_number' => 'required|string|max:50',
+            'contact_number' => 'required|numeric|digits:10',
             'table_id' => 'nullable|exists:tables,id',
             'append_to_order_id' => 'nullable|exists:orders,id',
             'special_instructions' => 'nullable|string',

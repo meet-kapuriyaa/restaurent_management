@@ -106,7 +106,7 @@ class OrderControllerTest extends TestCase
 
         $payload = [
             'customer_name' => 'Alice Smith',
-            'contact_number' => '+15550199',
+            'contact_number' => '1555019900',
             'table_id' => $this->table->id,
             'items' => [
                 ['food_item_id' => $item1->id, 'quantity' => 2],
@@ -125,7 +125,7 @@ class OrderControllerTest extends TestCase
         // Assert database contains the correct total: (15.50 * 2) + (5.25 * 1) = 36.25
         $this->assertDatabaseHas('orders', [
             'customer_name' => 'Alice Smith',
-            'contact_number' => '+15550199',
+            'contact_number' => '1555019900',
             'table_id' => $this->table->id,
             'total_amount' => 36.25,
             'status' => 'pending',

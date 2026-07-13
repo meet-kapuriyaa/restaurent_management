@@ -86,6 +86,11 @@ class OrderController extends Controller
                     $order->special_instructions = trim(($order->special_instructions ?? '') . "\n[Add-on]: " . $request->special_instructions);
                 }
             } else {
+                // Calculate daily sequence number
+                $today = now()->toDateString();
+                $maxDailyNo = Order::whereDate('created_at', $today)->max('daily_no');
+                $dailyNo = ($maxDailyNo ?? 0) + 1;
+
                 // Create the order with customer details
                 $order = Order::create([
                     'customer_name' => $request->customer_name,
@@ -96,6 +101,7 @@ class OrderController extends Controller
                     'table_id' => $request->table_id,
                     'special_instructions' => $request->special_instructions,
                     'user_id' => Auth::id(),
+                    'daily_no' => $dailyNo,
                 ]);
 
                 // Mark table occupied
@@ -193,12 +199,10 @@ class OrderController extends Controller
     public function getPendingOrders()
     {
         $pendingOrders = Order::with(['orderItems.foodItem', 'table'])
+            ->whereDate('created_at', \Carbon\Carbon::today())
             ->where(function($query) {
                 $query->where('payment_status', '!=', 'paid')
-                      ->orWhere(function($q) {
-                          $q->where('status', 'completed')
-                            ->whereDate('created_at', \Carbon\Carbon::today());
-                      });
+                      ->orWhere('status', 'completed');
             })
             ->latest()
             ->get();
@@ -380,7 +384,7 @@ class OrderController extends Controller
     public function lookupCustomer(Request $request)
     {
         $request->validate([
-            'phone' => 'required|string',
+            'phone' => 'required|numeric|digits:10',
         ]);
 
         $customer = \App\Models\Customer::where('phone_number', $request->phone)->first();

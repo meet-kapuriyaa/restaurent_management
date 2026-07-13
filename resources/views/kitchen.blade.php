@@ -401,7 +401,7 @@
                                     <div class="order-card">
                                         <div>
                                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                                <span class="fw-bold fs-5 text-dark">#ORD-${order.id}</span>
+                                                <span class="fw-bold fs-5 text-dark">#ORD-${order.daily_no}</span>
                                                 <div class="d-flex gap-2 align-items-center">
                                                     <span class="badge bg-dark rounded-pill px-2.5 py-1.5"><i class="bi bi-tablet-landscape me-1"></i> ${tableName}</span>
                                                     ${statusBadge}

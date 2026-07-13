@@ -312,7 +312,7 @@
 
         <div class="row g-4">
             <!-- Left Side: Food Menu -->
-            <div class="col-lg-7">
+            <div class="col-lg-7 order-2 order-lg-1">
                 <div class="card p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="fw-bold mb-0">Menu Selection</h4>
@@ -383,7 +383,7 @@
             </div>
 
             <!-- Right Side: Table Select & Cart Form -->
-            <div class="col-lg-5">
+            <div class="col-lg-5 order-1 order-lg-2">
                 <!-- Order Setup & Cart Form Wrapper -->
                 <form id="orderForm" novalidate>
                     @csrf
@@ -461,7 +461,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="contact_number" class="form-label text-secondary small fw-semibold">CONTACT NUMBER</label>
-                            <input type="text" class="form-control form-control-lg" name="contact_number" id="contact_number" placeholder="+1234567890" list="customer-phones-list" autocomplete="off" required>
+                            <input type="text" class="form-control form-control-lg" name="contact_number" id="contact_number" placeholder="e.g. 9876543210" maxlength="10" list="customer-phones-list" autocomplete="off" required>
                             <datalist id="customer-phones-list"></datalist>
                         </div>
                         <div class="mb-0">
@@ -509,7 +509,7 @@
             <div class="card p-4">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div class="d-flex align-items-center gap-2">
-                        <h4 class="fw-bold mb-0"><i class="bi bi-activity text-warning me-2"></i>Live Pending Orders Monitor</h4>
+                        <h4 class="fw-bold mb-0"><i class="bi bi-activity text-warning me-2"></i>Live Orders Monitor</h4>
                         <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1" style="font-size: 0.65rem; display: inline-flex; align-items: center; gap: 4px;">
                             <span class="spinner-grow spinner-grow-sm text-success" style="width: 6px; height: 6px;" role="status"></span> Live Sync
                         </span>
@@ -588,6 +588,67 @@
             });
             // Cart Data Store
             let cart = {};
+
+            function saveOrderState() {
+                const state = {
+                    cart: cart,
+                    customer_name: $('#customer_name').val(),
+                    contact_number: $('#contact_number').val(),
+                    special_instructions: $('#special_instructions').val(),
+                    order_type: $('input[name="order_type"]:checked').val(),
+                    selected_table_id: $('#selectedTableId').val(),
+                    append_to_order_id: $('#appendToOrderId').val(),
+                    customer_readonly: $('#customer_name').prop('readonly')
+                };
+                sessionStorage.setItem('waiter_order_state', JSON.stringify(state));
+            }
+
+            function loadOrderState() {
+                const saved = sessionStorage.getItem('waiter_order_state');
+                if (saved) {
+                    try {
+                        const state = JSON.parse(saved);
+                        if (state.cart) {
+                            cart = state.cart;
+                        }
+                        if (state.customer_name) {
+                            $('#customer_name').val(state.customer_name);
+                        }
+                        if (state.contact_number) {
+                            $('#contact_number').val(state.contact_number);
+                        }
+                        if (state.special_instructions) {
+                            $('#special_instructions').val(state.special_instructions);
+                        }
+                        if (state.order_type) {
+                            $(`input[name="order_type"][value="${state.order_type}"]`).prop('checked', true);
+                            if (state.order_type === 'takeaway') {
+                                $('#table-selection-section').hide();
+                            } else {
+                                $('#table-selection-section').show();
+                            }
+                        }
+                        if (state.selected_table_id) {
+                            $('#selectedTableId').val(state.selected_table_id);
+                            // Highlight selected table
+                            $('.table-map-card').removeClass('table-selected');
+                            $(`.table-map-card[data-id="${state.selected_table_id}"]`).addClass('table-selected');
+                        }
+                        if (state.append_to_order_id) {
+                            $('#appendToOrderId').val(state.append_to_order_id);
+                        }
+                        if (state.customer_readonly) {
+                            $('#customer_name').prop('readonly', true);
+                            $('#contact_number').prop('readonly', true);
+                        }
+                    } catch (e) {
+                        console.error('Failed to parse saved state:', e);
+                    }
+                }
+            }
+
+            // Load saved state on startup
+            loadOrderState();
 
             // Render Cart Contents
             function renderCart() {
@@ -710,6 +771,10 @@
                 // Re-run validation on cart count to clear error if valid
                 if (typeof $('#orderForm').validate === 'function') {
                     $('#orderForm').validate().element('#cartItemsCount');
+                }
+
+                if (typeof saveOrderState === 'function') {
+                    saveOrderState();
                 }
             }
 
@@ -844,6 +909,7 @@
                                         if (typeof $('#orderForm').validate === 'function') {
                                             $('#orderForm').validate().element('#selectedTableId');
                                         }
+                                        saveOrderState();
 
                                         Swal.fire({
                                             toast: true,
@@ -889,6 +955,7 @@
                 if (typeof $('#orderForm').validate === 'function') {
                     $('#orderForm').validate().element('#selectedTableId');
                 }
+                saveOrderState();
             });
 
             // Dynamic Customer Auto-fetch by Name and Phone
@@ -953,7 +1020,9 @@
             $('#contact_number').on('input', function() {
                 if ($(this).prop('readonly')) return;
 
-                const phoneVal = $(this).val().trim();
+                // Restrict input to digits only
+                let phoneVal = $(this).val().replace(/[^0-9]/g, '');
+                $(this).val(phoneVal);
 
                 // Check if the typed value matches any option in the datalist (selection event)
                 let matchedOption = null;
@@ -1014,6 +1083,11 @@
                 }
             });
 
+            // Save state when text inputs change
+            $('#customer_name, #contact_number, #special_instructions').on('input change', function() {
+                saveOrderState();
+            });
+
             // jQuery Validation configuration
             $('#orderForm').validate({
                 ignore: [], // Make sure hidden fields are not ignored
@@ -1023,7 +1097,10 @@
                         minlength: 2
                     },
                     contact_number: {
-                        required: true
+                        required: true,
+                        digits: true,
+                        minlength: 10,
+                        maxlength: 10
                     },
                     cart_items_count: {
                         required: true,
@@ -1043,7 +1120,10 @@
                         minlength: "Customer's name must be at least 2 characters long."
                     },
                     contact_number: {
-                        required: "Please enter the customer's contact number."
+                        required: "Please enter the customer's contact number.",
+                        digits: "Contact number must contain only numbers.",
+                        minlength: "Contact number must be exactly 10 digits.",
+                        maxlength: "Contact number must be exactly 10 digits."
                     },
                     cart_items_count: {
                         required: "Your order cart must have at least one food item.",
@@ -1068,6 +1148,16 @@
                         error.appendTo('#table-error-container');
                     } else {
                         error.insertAfter(element);
+                    }
+                },
+                invalidHandler: function(event, validator) {
+                    if (validator.numberOfInvalids()) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Incomplete Details',
+                            text: 'Please fill in all Customer Details and select a Table before submitting.',
+                            confirmButtonColor: '#dc2626'
+                        });
                     }
                 },
                 submitHandler: function(form, event) {
@@ -1140,6 +1230,7 @@
                             // Reset form states
                             cart = {};
                             renderCart();
+                            sessionStorage.removeItem('waiter_order_state');
                             
                             // Reset inputs
                             $('#customer_name').val('').prop('readonly', false);
@@ -1227,7 +1318,7 @@
 
                 return `
                     <tr class="order-monitor-row" id="order-row-${order.id}" data-status="${order.status}">
-                        <td class="fw-bold">#ORD-${order.id}</td>
+                        <td class="fw-bold">#ORD-${order.daily_no}</td>
                         <td>
                             ${order.table ? `<div class="mb-1"><span class="badge text-white" style="background: var(--primary-gradient) !important; font-size: 0.75rem;"><i class="bi bi-hash"></i> Table ${order.table.table_number}</span></div>` : ''}
                             <div class="fw-semibold">${order.customer_name}</div>

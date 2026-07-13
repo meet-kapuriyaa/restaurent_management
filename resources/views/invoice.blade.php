@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt_{{ $order->created_at->format('Ymd') . sprintf('%04d', $order->id) }}</title>
+    <title>Receipt_{{ $order->created_at->format('Ymd') . sprintf('%04d', $order->daily_no) }}</title>
     
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -294,7 +294,7 @@
         <div class="meta-info">
             <div class="meta-row">
                 <span class="meta-label">Receipt No:</span>
-                <span class="meta-value">#{{ $order->created_at->format('Ymd') . sprintf('%04d', $order->id) }}</span>
+                <span class="meta-value">#{{ $order->created_at->format('Ymd') . sprintf('%04d', $order->daily_no) }}</span>
             </div>
             <div class="meta-row">
                 <span class="meta-label">Table:</span>
@@ -368,7 +368,7 @@
             <div style="text-align: center; margin: 1.5rem 0;">
                 <p class="small fw-semibold text-secondary" style="font-size: 0.8rem; margin: 0 0 8px 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">UPI Quick Scan Checkout</p>
                 <div style="background: #ffffff; padding: 10px; display: inline-block; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=restaurant@bank&pn=Annam%20QSR&am={{ $order->total_amount }}&tn={{ $order->created_at->format('Ymd') . sprintf('%04d', $order->id) }}" alt="UPI QR Code" style="width: 150px; height: 150px; display: block;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=restaurant@bank&pn=Annam%20QSR&am={{ $order->total_amount }}&tn={{ $order->created_at->format('Ymd') . sprintf('%04d', $order->daily_no) }}" alt="UPI QR Code" style="width: 150px; height: 150px; display: block;">
                 </div>
                 <p class="small text-muted" style="font-size: 0.75rem; color: #64748b; margin: 6px 0 0 0;">Scan using GPay, PhonePe, or Paytm</p>
             </div>
