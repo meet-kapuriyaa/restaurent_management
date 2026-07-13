@@ -151,6 +151,40 @@ class OrderControllerTest extends TestCase
     }
 
     /**
+     * Test placing an order successfully without table_id.
+     */
+    public function test_can_place_order_without_table_id(): void
+    {
+        $item1 = FoodItem::create(['name' => 'Truffle Burger', 'price' => 15.50, 'status' => 'available']);
+
+        $payload = [
+            'customer_name' => 'Alice Smith',
+            'contact_number' => '1555019900',
+            'table_id' => null,
+            'items' => [
+                ['food_item_id' => $item1->id, 'quantity' => 2]
+            ]
+        ];
+
+        $response = $this->actingAs($this->waiterUser)->postJson(route('orders.store'), $payload);
+
+        $response->assertStatus(201)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Order placed successfully!'
+            ]);
+
+        $this->assertDatabaseHas('orders', [
+            'customer_name' => 'Alice Smith',
+            'contact_number' => '1555019900',
+            'table_id' => null,
+            'total_amount' => 31.00,
+            'status' => 'pending',
+            'payment_status' => 'unpaid'
+        ]);
+    }
+
+    /**
      * Test order validation fails if fields are missing or invalid.
      */
     public function test_order_placement_fails_on_validation_errors(): void
@@ -551,5 +585,53 @@ class OrderControllerTest extends TestCase
         $this->assertEquals(20.00, (float) $order->total_amount); // 10.00 + (2 * 5.00) = 20.00
         $this->assertEquals('preparing', $order->status); // Reset from ready to preparing
         $this->assertCount(2, $order->orderItems);
+    }
+
+    /**
+     * Test kitchen pending API filters out ready items of an active order.
+     */
+    public function test_kitchen_pending_api_filters_out_ready_items(): void
+    {
+        $food1 = FoodItem::create(['name' => 'Item 1', 'price' => 10.00, 'status' => 'available']);
+        $food2 = FoodItem::create(['name' => 'Item 2', 'price' => 5.00, 'status' => 'available']);
+
+        $order = Order::create([
+            'customer_name' => 'Charlie Brown',
+            'contact_number' => '1122334455',
+            'total_amount' => 10.00,
+            'status' => 'preparing',
+            'payment_status' => 'unpaid',
+            'table_id' => $this->table->id
+        ]);
+
+        // Create first item as ready
+        $item1 = OrderItem::create([
+            'order_id' => $order->id,
+            'food_item_id' => $food1->id,
+            'quantity' => 1,
+            'price' => 10.00,
+            'status' => 'ready'
+        ]);
+
+        // Create second item as pending
+        $item2 = OrderItem::create([
+            'order_id' => $order->id,
+            'food_item_id' => $food2->id,
+            'quantity' => 2,
+            'price' => 5.00,
+            'status' => 'pending'
+        ]);
+
+        $response = $this->actingAs($this->waiterUser)->getJson(route('orders.pending'));
+
+        $response->assertStatus(200);
+        
+        $data = $response->json();
+        $this->assertCount(1, $data);
+        
+        // The loaded orderItems relation should only contain the pending item, not the ready one
+        $returnedOrder = $data[0];
+        $this->assertCount(1, $returnedOrder['order_items']);
+        $this->assertEquals($item2->id, $returnedOrder['order_items'][0]['id']);
     }
 }

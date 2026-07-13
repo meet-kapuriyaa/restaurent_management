@@ -265,6 +265,12 @@ class DatabaseSeeder extends Seeder
                 'description' => 'Allows viewing the financial audit logs and exporting sales ledger as CSV.',
                 'is_enabled' => true,
             ],
+            [
+                'key' => 'table_selection_required',
+                'display_name' => 'Require Table Selection',
+                'description' => 'Requires selecting a table for Dine-in orders. If disabled, tables can be omitted, and orders placed without a table selection.',
+                'is_enabled' => true,
+            ],
         ];
 
         foreach ($features as $f) {

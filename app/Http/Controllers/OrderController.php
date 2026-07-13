@@ -146,6 +146,7 @@ class OrderController extends Controller
                     'quantity' => $quantity,
                     'price' => $itemPrice,
                     'modifiers' => $modifiers,
+                    'status' => 'pending',
                     'created_at' => $now,
                     'updated_at' => $now,
                 ];
@@ -198,7 +199,12 @@ class OrderController extends Controller
      */
     public function getPendingOrders()
     {
-        $pendingOrders = Order::with(['orderItems.foodItem', 'table'])
+        $pendingOrders = Order::with([
+            'orderItems' => function($query) {
+                $query->whereIn('status', ['pending', 'preparing'])->with('foodItem');
+            },
+            'table'
+        ])
             ->whereDate('created_at', \Carbon\Carbon::today())
             ->where(function($query) {
                 $query->where('payment_status', '!=', 'paid')
@@ -353,6 +359,12 @@ class OrderController extends Controller
             $updateData = ['status' => $request->status];
 
             $order->update($updateData);
+
+            if ($request->status === 'preparing') {
+                $order->orderItems()->where('status', 'pending')->update(['status' => 'preparing']);
+            } elseif (in_array($request->status, ['ready', 'delivered', 'completed'])) {
+                $order->orderItems()->whereIn('status', ['pending', 'preparing'])->update(['status' => 'ready']);
+            }
 
             DB::commit();
 

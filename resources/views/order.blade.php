@@ -408,6 +408,7 @@
                         </div>
 
                         <!-- Table Map Section -->
+                        @if(\App\Models\Feature::isActive('table_selection_required'))
                         <div id="table-selection-section" class="mb-0">
                             <label class="form-label text-secondary small fw-semibold">SELECT A TABLE</label>
                             
@@ -449,6 +450,10 @@
                                 @endforeach
                             </div>
                         </div>
+                        @else
+                            <input type="hidden" name="table_id" id="selectedTableId" value="">
+                            <input type="hidden" name="append_to_order_id" id="appendToOrderId" value="">
+                        @endif
                     </div>
 
                     <!-- Customer Details Card -->
@@ -580,6 +585,7 @@
 
     <script>
         $(document).ready(function() {
+            const isTableSelectionRequired = {{ \App\Models\Feature::isActive('table_selection_required') ? 'true' : 'false' }};
             // Setup AJAX CSRF
             $.ajaxSetup({
                 headers: {
@@ -988,10 +994,11 @@
                 });
 
                 if (matchedOption) {
-                    const phone = matchedOption.data('phone');
+                    const phone = matchedOption.attr('data-phone');
                     if (phone) {
                         $('#contact_number').val(phone);
                         showWelcomeToast(nameVal);
+                        saveOrderState();
                     }
                     return;
                 }
@@ -1010,9 +1017,40 @@
                                 response.forEach(customer => {
                                     $datalist.append(`<option value="${customer.name}" data-phone="${customer.phone_number}">`);
                                 });
+
+                                // Auto-fill if exact match is returned
+                                const exactMatch = response.find(c => c.name.toLowerCase() === nameVal.toLowerCase());
+                                if (exactMatch) {
+                                    $('#contact_number').val(exactMatch.phone_number);
+                                    showWelcomeToast(exactMatch.name);
+                                    saveOrderState();
+                                }
                             }
                         });
                     }, 300);
+                }
+            });
+
+            // Fallback name lookup on blur
+            $('#customer_name').on('blur', function() {
+                if ($(this).prop('readonly')) return;
+
+                const name = $(this).val().trim();
+                const currentPhone = $('#contact_number').val().trim();
+                if (name.length >= 2 && !currentPhone) {
+                    $.ajax({
+                        url: "{{ route('customers.search') }}",
+                        type: 'GET',
+                        data: { query: name },
+                        success: function(response) {
+                            const exactMatch = response.find(c => c.name.toLowerCase() === name.toLowerCase());
+                            if (exactMatch) {
+                                $('#contact_number').val(exactMatch.phone_number);
+                                showWelcomeToast(exactMatch.name);
+                                saveOrderState();
+                            }
+                        }
+                    });
                 }
             });
 
@@ -1034,10 +1072,11 @@
                 });
 
                 if (matchedOption) {
-                    const name = matchedOption.data('name');
+                    const name = matchedOption.attr('data-name');
                     if (name) {
                         $('#customer_name').val(name);
                         showWelcomeToast(name);
+                        saveOrderState();
                     }
                     return;
                 }
@@ -1056,6 +1095,14 @@
                                 response.forEach(customer => {
                                     $datalist.append(`<option value="${customer.phone_number}" data-name="${customer.name}">`);
                                 });
+
+                                // Auto-fill if exact match is returned
+                                const exactMatch = response.find(c => c.phone_number === phoneVal);
+                                if (exactMatch) {
+                                    $('#customer_name').val(exactMatch.name);
+                                    showWelcomeToast(exactMatch.name);
+                                    saveOrderState();
+                                }
                             }
                         });
                     }, 300);
@@ -1077,6 +1124,7 @@
                             if (response.success && response.name) {
                                 $('#customer_name').val(response.name);
                                 showWelcomeToast(response.name);
+                                saveOrderState();
                             }
                         }
                     });
@@ -1109,7 +1157,7 @@
                     table_id: {
                         required: {
                             depends: function(element) {
-                                return $('#type-dinein').is(':checked');
+                                return isTableSelectionRequired && $('#type-dinein').is(':checked');
                             }
                         }
                     }
