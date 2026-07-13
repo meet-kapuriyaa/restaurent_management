@@ -14,12 +14,21 @@ class AdminControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected User $superAdminUser;
     protected User $adminUser;
     protected User $waiterUser;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Create super admin user
+        $this->superAdminUser = User::create([
+            'name' => 'Super Admin Manager',
+            'email' => 'superadmin@test.com',
+            'password' => bcrypt('password'),
+            'role' => 'admin',
+        ]);
 
         // Create admin user
         $this->adminUser = User::create([
@@ -39,6 +48,7 @@ class AdminControllerTest extends TestCase
 
         // Create role permissions
         RolePermission::create(['role' => 'admin', 'page' => 'admin_panel', 'is_allowed' => true]);
+        RolePermission::create(['role' => 'admin', 'page' => 'manage_roles', 'is_allowed' => true]);
         RolePermission::create(['role' => 'waiter', 'page' => 'admin_panel', 'is_allowed' => false]);
     }
 
@@ -86,6 +96,7 @@ class AdminControllerTest extends TestCase
             'activeOrdersCount',
             'totalFoodItemsCount',
             'availableRoles',
+            'pendingUsers',
         ]);
     }
 
@@ -99,6 +110,7 @@ class AdminControllerTest extends TestCase
             'price' => 350.00,
             'description' => 'Delicious tandoori chicken',
             'status' => 'available',
+            'image' => \Illuminate\Http\UploadedFile::fake()->create('chicken.jpg', 100, 'image/jpeg'),
         ];
 
         $response = $this->actingAs($this->adminUser)->postJson(route('admin.food-items.store'), $payload);
@@ -227,7 +239,7 @@ class AdminControllerTest extends TestCase
     /**
      * Test updating order status to completed automatically sets payment status to paid.
      */
-    public function test_admin_completing_order_updates_payment_status_to_paid(): void
+    public function test_admin_completing_order_leaves_payment_status_as_unpaid(): void
     {
         $order = Order::create([
             'customer_name' => 'Bob',
@@ -243,7 +255,7 @@ class AdminControllerTest extends TestCase
 
         $response->assertStatus(200);
         $this->assertEquals('completed', $order->fresh()->status);
-        $this->assertEquals('paid', $order->fresh()->payment_status);
+        $this->assertEquals('unpaid', $order->fresh()->payment_status);
     }
 
     /**
@@ -309,7 +321,7 @@ class AdminControllerTest extends TestCase
             'is_allowed' => 1,
         ];
 
-        $response = $this->actingAs($this->adminUser)->postJson(route('admin.permissions.update'), $payload);
+        $response = $this->actingAs($this->superAdminUser)->postJson(route('admin.permissions.update'), $payload);
 
         $response->assertStatus(200)
             ->assertJson([
@@ -329,7 +341,7 @@ class AdminControllerTest extends TestCase
      */
     public function test_admin_can_update_user_role(): void
     {
-        $response = $this->actingAs($this->adminUser)->patchJson(route('admin.users.role', $this->waiterUser), [
+        $response = $this->actingAs($this->superAdminUser)->patchJson(route('admin.users.role', $this->waiterUser), [
             'role' => 'chef',
         ]);
 
@@ -343,11 +355,42 @@ class AdminControllerTest extends TestCase
     }
 
     /**
+     * Test updating user details, specifically assigning roles to pending users.
+     */
+    public function test_admin_can_update_user_details_including_pending_users(): void
+    {
+        $pendingUser = User::create([
+            'name' => 'New Pending Employee',
+            'email' => 'pendingemp@test.com',
+            'password' => bcrypt('password123'),
+            'role' => 'pending',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($this->superAdminUser)->putJson(route('admin.users.update', $pendingUser), [
+            'name' => 'Approved Employee',
+            'email' => 'pendingemp@test.com',
+            'role' => 'chef',
+            'salary' => 45000,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Employee account updated successfully!'
+            ]);
+
+        $this->assertEquals('chef', $pendingUser->fresh()->role);
+        $this->assertEquals('Approved Employee', $pendingUser->fresh()->name);
+        $this->assertEquals(45000, $pendingUser->fresh()->salary);
+    }
+
+    /**
      * Test deleting user.
      */
     public function test_admin_can_delete_user(): void
     {
-        $response = $this->actingAs($this->adminUser)->deleteJson(route('admin.users.delete', $this->waiterUser));
+        $response = $this->actingAs($this->superAdminUser)->deleteJson(route('admin.users.delete', $this->waiterUser));
 
         $response->assertStatus(200)
             ->assertJson([
@@ -365,7 +408,7 @@ class AdminControllerTest extends TestCase
      */
     public function test_admin_cannot_delete_themselves(): void
     {
-        $response = $this->actingAs($this->adminUser)->deleteJson(route('admin.users.delete', $this->adminUser));
+        $response = $this->actingAs($this->superAdminUser)->deleteJson(route('admin.users.delete', $this->superAdminUser));
 
         $response->assertStatus(400)
             ->assertJson([
@@ -374,7 +417,7 @@ class AdminControllerTest extends TestCase
             ]);
 
         $this->assertDatabaseHas('users', [
-            'id' => $this->adminUser->id,
+            'id' => $this->superAdminUser->id,
         ]);
     }
 
@@ -407,7 +450,7 @@ class AdminControllerTest extends TestCase
         $order2->created_at = '2026-06-29 12:00:00';
         $order2->save();
 
-        // Order 3: Today
+        // Order 3: Older Date
         $order3 = new Order([
             'customer_name' => 'Charlie Brown',
             'contact_number' => '3333333333',
@@ -417,6 +460,17 @@ class AdminControllerTest extends TestCase
         ]);
         $order3->created_at = '2026-06-30 12:00:00';
         $order3->save();
+
+        // Order 4: Real Today
+        $orderToday = new Order([
+            'customer_name' => 'Dave Today',
+            'contact_number' => '4444444444',
+            'total_amount' => 120.00,
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+        ]);
+        $orderToday->created_at = today();
+        $orderToday->save();
 
         // 1. Test Filter Type: single date (2026-06-29)
         $response = $this->actingAs($this->adminUser)
@@ -429,6 +483,7 @@ class AdminControllerTest extends TestCase
         $response->assertSee('Bob Smith');
         $response->assertDontSee('Alice Doe');
         $response->assertDontSee('Charlie Brown');
+        $response->assertDontSee('Dave Today');
 
         // 2. Test Filter Type: custom range (from 2026-06-28 to 2026-06-29)
         $response = $this->actingAs($this->adminUser)
@@ -441,11 +496,25 @@ class AdminControllerTest extends TestCase
         $response->assertSee('Alice Doe');
         $response->assertSee('Bob Smith');
         $response->assertDontSee('Charlie Brown');
+        $response->assertDontSee('Dave Today');
 
-        // 3. Test Filter Type: all
+        // 3. Test Filter Type: today
         $response = $this->actingAs($this->adminUser)
             ->get(
-                route('admin.index', ['filter_type' => 'all']),
+                route('admin.index', ['filter_type' => 'today']),
+                ['X-Requested-With' => 'XMLHttpRequest']
+            );
+
+        $response->assertStatus(200);
+        $response->assertSee('Dave Today');
+        $response->assertDontSee('Alice Doe');
+        $response->assertDontSee('Bob Smith');
+        $response->assertDontSee('Charlie Brown');
+
+        // 4. Test Filter Type: all (Default)
+        $response = $this->actingAs($this->adminUser)
+            ->get(
+                route('admin.index'),
                 ['X-Requested-With' => 'XMLHttpRequest']
             );
 
@@ -453,6 +522,7 @@ class AdminControllerTest extends TestCase
         $response->assertSee('Alice Doe');
         $response->assertSee('Bob Smith');
         $response->assertSee('Charlie Brown');
+        $response->assertSee('Dave Today');
     }
 
     /**
@@ -502,7 +572,7 @@ class AdminControllerTest extends TestCase
         ]);
 
         // Toggle to inactive (0)
-        $response = $this->actingAs($this->adminUser)->postJson(route('admin.roles.toggle-status'), [
+        $response = $this->actingAs($this->superAdminUser)->postJson(route('admin.roles.toggle-status'), [
             'role' => 'custom_role',
             'status' => 0
         ]);
@@ -523,7 +593,7 @@ class AdminControllerTest extends TestCase
 
     public function test_admin_cannot_deactivate_admin_role(): void
     {
-        $response = $this->actingAs($this->adminUser)->postJson(route('admin.roles.toggle-status'), [
+        $response = $this->actingAs($this->superAdminUser)->postJson(route('admin.roles.toggle-status'), [
             'role' => 'admin',
             'status' => 0
         ]);
@@ -533,5 +603,162 @@ class AdminControllerTest extends TestCase
                 'success' => false,
                 'message' => 'The Admin role cannot be deactivated.'
             ]);
+    }
+
+    /**
+     * Test admin-role page access restrictions.
+     */
+    public function test_roles_page_access_restrictions(): void
+    {
+        // Guest is redirected to login
+        $this->get(route('admin.roles.index'))->assertRedirect(route('login'));
+
+        // Waiter gets 403
+        $this->actingAs($this->waiterUser)->get(route('admin.roles.index'))->assertStatus(403);
+
+        // Admin gets 200
+        $this->actingAs($this->adminUser)->get(route('admin.roles.index'))->assertStatus(200);
+    }
+
+    /**
+     * Test standard admin cannot hit role management endpoints directly.
+     */
+    public function test_waiter_cannot_update_roles_or_permissions(): void
+    {
+        // Try to update permissions
+        $this->actingAs($this->waiterUser)->postJson(route('admin.permissions.update'), [
+            'role' => 'waiter',
+            'page' => 'kitchen_terminal',
+            'is_allowed' => 1
+        ])->assertStatus(403);
+
+        // Try to create role
+        $this->actingAs($this->waiterUser)->postJson(route('admin.roles.create'), [
+            'role_name' => 'new_test_role'
+        ])->assertStatus(403);
+
+        // Try to toggle status
+        $this->actingAs($this->waiterUser)->postJson(route('admin.roles.toggle-status'), [
+            'role' => 'waiter',
+            'status' => 0
+        ])->assertStatus(403);
+
+        // Try to update user role
+        $this->actingAs($this->waiterUser)->patchJson(route('admin.users.role', $this->waiterUser), [
+            'role' => 'chef'
+        ])->assertStatus(403);
+
+        // Try to delete user
+        $this->actingAs($this->waiterUser)->deleteJson(route('admin.users.delete', $this->waiterUser))->assertStatus(403);
+
+        // Try to delete role
+        $this->actingAs($this->waiterUser)->deleteJson(route('admin.roles.delete', 'waiter'))->assertStatus(403);
+    }
+
+    /**
+     * Test role deletion rules and restrictions.
+     */
+    public function test_role_deletion_behavior(): void
+    {
+        // Create custom role and assign to user
+        RolePermission::create(['role' => 'custom_cleaner', 'page' => 'can_insert', 'is_allowed' => true]);
+        $cleanerUser = User::create([
+            'name' => 'Cleaner John',
+            'email' => 'cleaner@test.com',
+            'password' => bcrypt('password'),
+            'role' => 'custom_cleaner',
+        ]);
+
+        // Waiter cannot delete custom role
+        $this->actingAs($this->waiterUser)
+            ->deleteJson(route('admin.roles.delete', 'custom_cleaner'))
+            ->assertStatus(403);
+
+        // Admin can delete custom role
+        $response = $this->actingAs($this->adminUser)
+            ->deleteJson(route('admin.roles.delete', 'custom_cleaner'));
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => "Role 'Custom cleaner' deleted successfully."
+            ]);
+
+        // Database entries of permissions for that role must be gone
+        $this->assertDatabaseMissing('role_permissions', [
+            'role' => 'custom_cleaner',
+        ]);
+
+        // Users carrying that role must be reset to 'pending'
+        $this->assertEquals('pending', $cleanerUser->fresh()->role);
+
+        // Try to delete system role (admin) - should be blocked
+        $response2 = $this->actingAs($this->adminUser)
+            ->deleteJson(route('admin.roles.delete', 'admin'));
+
+        $response2->assertStatus(400)
+            ->assertJson([
+                'success' => false,
+                'message' => 'System protected roles cannot be deleted.'
+            ]);
+
+        // Try to delete waiter role - should succeed
+        $response3 = $this->actingAs($this->adminUser)
+            ->deleteJson(route('admin.roles.delete', 'waiter'));
+        $response3->assertStatus(200);
+        $this->assertEquals('pending', $this->waiterUser->fresh()->role);
+    }
+
+    /**
+     * Test adding a category.
+     */
+    public function test_admin_can_store_category(): void
+    {
+        $payload = [
+            'name' => 'Soups',
+        ];
+
+        $response = $this->actingAs($this->adminUser)->postJson(route('admin.categories.store'), $payload);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Category added successfully!'
+            ]);
+
+        $this->assertDatabaseHas('categories', [
+            'name' => 'Soups',
+        ]);
+    }
+
+    /**
+     * Test deleting a category and nullifying its associated items.
+     */
+    public function test_admin_can_delete_category(): void
+    {
+        $category = \App\Models\Category::create(['name' => 'Dessert Corner']);
+        
+        $foodItem = FoodItem::create([
+            'name' => 'Gulab Jamun Extreme',
+            'price' => 50.00,
+            'description' => 'Extreme sweets',
+            'status' => 'available',
+            'category_id' => $category->id,
+        ]);
+
+        $response = $this->actingAs($this->adminUser)->deleteJson(route('admin.categories.delete', $category));
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Category deleted successfully!'
+            ]);
+
+        $this->assertDatabaseMissing('categories', [
+            'id' => $category->id,
+        ]);
+
+        // Asserts that the food item's category_id was set to null
+        $this->assertNull($foodItem->fresh()->category_id);
     }
 }

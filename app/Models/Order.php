@@ -21,6 +21,13 @@ class Order extends Model
         'user_id',
     ];
 
+    protected static function booted()
+    {
+        static::deleting(function ($order) {
+            $order->orderItems()->delete();
+        });
+    }
+
     public function orderItems()
     {
         return $this->hasMany(OrderItem::class);

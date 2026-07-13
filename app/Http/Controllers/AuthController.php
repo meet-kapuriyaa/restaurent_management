@@ -45,6 +45,10 @@ class AuthController extends Controller
     public function home()
     {
         $user = Auth::user();
+        if ($user->is_active === false) {
+            return view('home');
+        }
+
         if ($user->hasPermission('admin_panel')) {
             return redirect(route('admin.index'));
         } elseif ($user->hasPermission('kitchen_terminal')) {

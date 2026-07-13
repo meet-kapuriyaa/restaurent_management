@@ -18,10 +18,10 @@ return new class extends Migration
         // 2. Ensure missing columns exist in 'orders'
         Schema::table('orders', function (Blueprint $table) {
             if (!Schema::hasColumn('orders', 'table_id')) {
-                $table->foreignId('table_id')->nullable()->constrained('tables')->onDelete('set null');
+                $table->unsignedBigInteger('table_id')->nullable()->index();
             }
             if (!Schema::hasColumn('orders', 'user_id')) {
-                $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+                $table->unsignedBigInteger('user_id')->nullable()->index();
             }
             if (!Schema::hasColumn('orders', 'payment_method')) {
                 $table->string('payment_method')->default('cash');

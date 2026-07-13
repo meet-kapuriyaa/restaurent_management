@@ -23,6 +23,8 @@ class User extends Authenticatable
         'email',
         'password',
         'role',
+        'salary',
+        'is_active',
     ];
 
     /**
@@ -45,6 +47,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -53,6 +56,10 @@ class User extends Authenticatable
      */
     public function hasPermission(string $action): bool
     {
+        if ($this->is_active === false) {
+            return false;
+        }
+
         if ($this->role === 'admin') {
             return true;
         }

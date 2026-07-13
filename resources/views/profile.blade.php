@@ -194,7 +194,7 @@
     </nav>
 
     <!-- Main Container -->
-    <div class="container pb-5">
+    <div class="container-fluid px-md-5 px-3 pb-5">
         <div class="row g-4">
             
             <!-- Left: Profile Information -->
@@ -254,6 +254,12 @@
 
     <script>
         $(document).ready(function() {
+            // Setup AJAX CSRF
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
             
             // Validate Profile Info Form
             $('#profileInfoForm').validate({

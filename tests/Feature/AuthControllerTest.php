@@ -151,6 +151,32 @@ class AuthControllerTest extends TestCase
         $response3->assertRedirect(route('admin.index'));
     }
 
+    public function test_inactive_user_can_login_but_sees_deactivated_warning_on_home(): void
+    {
+        $inactiveUser = User::create([
+            'name' => 'Inactive User',
+            'email' => 'inactive@test.com',
+            'password' => bcrypt('password123'),
+            'role' => 'waiter',
+            'is_active' => false,
+        ]);
+
+        // Try to log in - should succeed and redirect to home
+        $response = $this->post(route('login'), [
+            'email' => 'inactive@test.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertRedirect(route('home'));
+        $this->assertTrue(auth()->check());
+
+        // Get the home page and check for deactivated warning
+        $response2 = $this->actingAs($inactiveUser)->get(route('home'));
+        $response2->assertStatus(200);
+        $response2->assertSee('Account Deactivated');
+        $response2->assertSee('Your account is inactive. Please contact the manager or admin.');
+    }
+
     /**
      * Test guest cannot update profile.
      */

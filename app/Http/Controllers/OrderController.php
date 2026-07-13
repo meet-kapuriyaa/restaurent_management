@@ -19,9 +19,20 @@ class OrderController extends Controller
      */
     public function index()
     {
-        $foodItems = FoodItem::where('status', 'available')->get();
+        if (!\App\Models\Feature::isActive('waiter_terminal')) {
+            abort(403, 'Access Denied: Waiter Terminal & Table Ordering is currently disabled.');
+        }
+        $foodItems = FoodItem::with('category')
+            ->where('food_items.status', 'available')
+            ->leftJoin('categories', 'food_items.category_id', '=', 'categories.id')
+            ->orderByRaw('CASE WHEN categories.order_weight IS NULL THEN 9999 ELSE categories.order_weight END')
+            ->orderBy('categories.name')
+            ->orderBy('food_items.name')
+            ->select('food_items.*')
+            ->get();
         $tables = Table::orderBy('table_number')->get();
-        return view('order', compact('foodItems', 'tables'));
+        $categories = \App\Models\Category::orderBy('order_weight')->orderBy('name')->get();
+        return view('order', compact('foodItems', 'tables', 'categories'));
     }
 
     /**
@@ -29,6 +40,12 @@ class OrderController extends Controller
      */
     public function store(StoreOrderRequest $request)
     {
+        if (!\App\Models\Feature::isActive('waiter_terminal')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access Denied: Waiter Terminal & Table Ordering is currently disabled.'
+            ], 403);
+        }
         if (!Auth::user()->hasPermission('can_insert')) {
             return response()->json([
                 'success' => false,
@@ -93,7 +110,10 @@ class OrderController extends Controller
             $foodItemIds = array_column($request->items, 'food_item_id');
             $foodItemsMap = FoodItem::whereIn('id', $foodItemIds)->get()->keyBy('id');
 
-            // Iterate over items to save them and calculate total amount based on DB prices
+            // Iterate over items to calculate total amount and accumulate for bulk insert
+            $orderItems = [];
+            $now = now();
+            
             foreach ($request->items as $itemData) {
                 $foodItemId = $itemData['food_item_id'];
                 $foodItem = $foodItemsMap->get($foodItemId);
@@ -114,13 +134,20 @@ class OrderController extends Controller
                 $itemTotal = $itemPrice * $quantity;
                 $totalAmount += $itemTotal;
 
-                OrderItem::create([
+                $orderItems[] = [
                     'order_id' => $order->id,
                     'food_item_id' => $foodItem->id,
                     'quantity' => $quantity,
                     'price' => $itemPrice,
                     'modifiers' => $modifiers,
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            // Perform single bulk database insert
+            if (!empty($orderItems)) {
+                OrderItem::insert($orderItems);
             }
 
             // Calculate tax (5% GST)
@@ -132,6 +159,13 @@ class OrderController extends Controller
             $order->save();
 
             DB::commit();
+
+            // Broadcast the new order placement safely
+            try {
+                event(new \App\Events\OrderUpdated($order));
+            } catch (\Exception $e) {
+                Log::warning('Broadcast failed on order placement: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
@@ -159,11 +193,62 @@ class OrderController extends Controller
     public function getPendingOrders()
     {
         $pendingOrders = Order::with(['orderItems.foodItem', 'table'])
-            ->where('payment_status', '!=', 'paid')
+            ->where(function($query) {
+                $query->where('payment_status', '!=', 'paid')
+                      ->orWhere(function($q) {
+                          $q->where('status', 'completed')
+                            ->whereDate('created_at', \Carbon\Carbon::today());
+                      });
+            })
             ->latest()
             ->get();
 
         return response()->json($pendingOrders);
+    }
+
+    /**
+     * Mark an order as delivered.
+     */
+    public function deliver(Order $order)
+    {
+        if (!Auth::user()->hasPermission('can_update')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Access Denied: You do not have permission to update orders.'
+            ], 403);
+        }
+
+        if ($order->status !== 'ready') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only orders that have been marked as ready by the kitchen can be delivered.'
+            ], 400);
+        }
+
+        try {
+            $order->update([
+                'status' => 'delivered'
+            ]);
+
+            // Broadcast the order delivery status safely
+            try {
+                event(new \App\Events\OrderUpdated($order));
+            } catch (\Exception $e) {
+                Log::warning('Broadcast failed on order delivery: ' . $e->getMessage());
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Order #' . $order->id . ' marked as delivered successfully!',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to deliver order: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to mark order as delivered. Please try again.',
+            ], 500);
+        }
     }
 
     /**
@@ -185,10 +270,10 @@ class OrderController extends Controller
             ], 400);
         }
 
-        if ($order->status !== 'ready') {
+        if ($order->status !== 'delivered') {
             return response()->json([
                 'success' => false,
-                'message' => 'Only orders that have been marked as ready by the kitchen can be completed.'
+                'message' => 'Only orders that have been marked as delivered can be completed.'
             ], 400);
         }
 
@@ -204,6 +289,13 @@ class OrderController extends Controller
             }
 
             DB::commit();
+
+            // Broadcast the order completion status safely
+            try {
+                event(new \App\Events\OrderUpdated($order));
+            } catch (\Exception $e) {
+                Log::warning('Broadcast failed on order completion: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
@@ -241,7 +333,7 @@ class OrderController extends Controller
         }
 
         $request->validate([
-            'status' => 'required|in:pending,preparing,ready,completed',
+            'status' => 'required|in:pending,preparing,ready,delivered,completed',
         ]);
 
         if ($request->status === 'ready' && $order->status === 'pending') {
@@ -259,6 +351,13 @@ class OrderController extends Controller
             $order->update($updateData);
 
             DB::commit();
+
+            // Broadcast the status update to all connected terminals safely
+            try {
+                event(new \App\Events\OrderUpdated($order));
+            } catch (\Exception $e) {
+                Log::warning('Broadcast failed on order status update: ' . $e->getMessage());
+            }
 
             return response()->json([
                 'success' => true,
@@ -314,6 +413,25 @@ class OrderController extends Controller
             'success' => false,
             'message' => 'Customer not found',
         ]);
+    }
+
+    /**
+     * Search customers by name or phone number for autocomplete.
+     */
+    public function searchCustomers(Request $request)
+    {
+        $query = $request->query('query');
+
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $customers = \App\Models\Customer::where('name', 'like', "%{$query}%")
+            ->orWhere('phone_number', 'like', "%{$query}%")
+            ->limit(10)
+            ->get(['id', 'name', 'phone_number']);
+
+        return response()->json($customers);
     }
 
     /**

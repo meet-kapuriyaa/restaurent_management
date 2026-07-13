@@ -185,7 +185,7 @@
                 @endif
                 @if(Auth::check() && Auth::user()->hasPermission('waiter_terminal'))
                     <a href="{{ route('orders.index') }}" class="btn btn-sm btn-outline-secondary fw-semibold">
-                        <i class="bi bi-shop me-1"></i> Waiter Terminal
+                        <i class="bi bi-shop me-1"></i> Order Panel
                     </a>
                 @endif
                 @auth
@@ -253,6 +253,12 @@
 
     <script>
         $(document).ready(function() {
+            // Setup AJAX CSRF
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
             
             // Format Live Terminal Time
             function updateKDSTime() {
@@ -455,24 +461,7 @@
                     return;
                 }
 
-                // For completion, ask for a confirmation prompt
-                if (nextStatus === 'ready') {
-                    Swal.fire({
-                        title: 'Mark as Ready?',
-                        text: "This will notify the waiters that the order is ready to serve.",
-                        icon: 'question',
-                        showCancelButton: true,
-                        confirmButtonColor: '#10b981',
-                        cancelButtonColor: '#64748b',
-                        confirmButtonText: 'Yes, mark ready'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            changeOrderStatus(orderId, nextStatus);
-                        }
-                    });
-                } else {
-                    changeOrderStatus(orderId, nextStatus);
-                }
+                changeOrderStatus(orderId, nextStatus);
             });
 
             // Perform status transition call

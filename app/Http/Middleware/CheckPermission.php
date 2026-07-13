@@ -27,6 +27,10 @@ class CheckPermission
 
         $user = Auth::user();
 
+        if ($user->is_active === false) {
+            return redirect(route('home'));
+        }
+
         // Admin has superuser access to everything
         if ($user->role === 'admin') {
             return $next($request);

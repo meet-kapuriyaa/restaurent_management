@@ -201,7 +201,7 @@ class OrderControllerTest extends TestCase
     }
 
     /**
-     * Test pending orders endpoint returns completed but unpaid orders and excludes paid orders.
+     * Test pending orders endpoint returns unpaid active orders, today's completed/paid orders, and excludes older paid completed orders.
      */
     public function test_pending_orders_endpoint_returns_completed_but_unpaid_orders_and_excludes_paid_orders(): void
     {
@@ -217,24 +217,73 @@ class OrderControllerTest extends TestCase
         ]);
         OrderItem::create(['order_id' => $order1->id, 'food_item_id' => $item->id, 'quantity' => 1, 'price' => 5.00]);
 
-        // 2. Create a pending but paid order (should not return since it is paid)
+        // 2. Create today's completed and paid order
         $order2 = Order::create([
-            'customer_name' => 'Paid Pending Customer',
+            'customer_name' => 'Today Paid Completed Customer',
             'contact_number' => '555-0002',
             'total_amount' => 5.00,
-            'status' => 'pending',
-            'payment_status' => 'paid'
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'created_at' => now(),
         ]);
         OrderItem::create(['order_id' => $order2->id, 'food_item_id' => $item->id, 'quantity' => 1, 'price' => 5.00]);
+
+        // 3. Create yesterday's completed and paid order
+        $order3 = Order::create([
+            'customer_name' => 'Yesterday Paid Completed Customer',
+            'contact_number' => '555-0003',
+            'total_amount' => 5.00,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+        ]);
+        $order3->created_at = now()->subDay();
+        $order3->save();
+        OrderItem::create(['order_id' => $order3->id, 'food_item_id' => $item->id, 'quantity' => 1, 'price' => 5.00]);
 
         $response = $this->actingAs($this->waiterUser)->getJson(route('orders.pending'));
 
         $response->assertStatus(200)
-            ->assertJsonCount(1)
+            ->assertJsonCount(2)
             ->assertJsonFragment([
                 'id' => $order1->id,
                 'customer_name' => 'Unpaid Completed Customer',
+            ])
+            ->assertJsonFragment([
+                'id' => $order2->id,
+                'customer_name' => 'Today Paid Completed Customer',
+            ])
+            ->assertJsonMissing([
+                'id' => $order3->id,
+                'customer_name' => 'Yesterday Paid Completed Customer',
             ]);
+    }
+
+    /**
+     * Test marking an order as delivered.
+     */
+    public function test_can_deliver_order(): void
+    {
+        $order = Order::create([
+            'customer_name' => 'Charlie Brown',
+            'contact_number' => '555-9876',
+            'total_amount' => 15.00,
+            'status' => 'ready',
+            'payment_status' => 'unpaid',
+            'table_id' => $this->table->id
+        ]);
+
+        $response = $this->actingAs($this->waiterUser)->postJson(route('orders.deliver', $order));
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Order #' . $order->id . ' marked as delivered successfully!'
+            ]);
+
+        $this->assertDatabaseHas('orders', [
+            'id' => $order->id,
+            'status' => 'delivered'
+        ]);
     }
 
     /**
@@ -246,7 +295,7 @@ class OrderControllerTest extends TestCase
             'customer_name' => 'Charlie Brown',
             'contact_number' => '555-9876',
             'total_amount' => 15.00,
-            'status' => 'ready',
+            'status' => 'delivered',
             'payment_status' => 'unpaid',
             'table_id' => $this->table->id
         ]);
@@ -269,19 +318,20 @@ class OrderControllerTest extends TestCase
         ]);
 
         // Assert table is released
-        $this->assertEquals('available', $this->table->fresh()->status);
+        $this->freshTableStatus = $this->table->fresh()->status;
+        $this->assertEquals('available', $this->freshTableStatus);
     }
 
     /**
-     * Test completing an order that is not ready fails.
+     * Test completing an order that is not delivered fails.
      */
-    public function test_cannot_complete_non_ready_order(): void
+    public function test_cannot_complete_non_delivered_order(): void
     {
         $order = Order::create([
             'customer_name' => 'Charlie Brown',
             'contact_number' => '555-9876',
             'total_amount' => 15.00,
-            'status' => 'preparing',
+            'status' => 'ready',
             'payment_status' => 'unpaid'
         ]);
 
@@ -290,7 +340,7 @@ class OrderControllerTest extends TestCase
         $response->assertStatus(400)
             ->assertJson([
                 'success' => false,
-                'message' => 'Only orders that have been marked as ready by the kitchen can be completed.'
+                'message' => 'Only orders that have been marked as delivered can be completed.'
             ]);
     }
 

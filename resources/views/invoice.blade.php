@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt_ORD-{{ $order->id }}</title>
+    <title>Receipt_{{ $order->created_at->format('Ymd') . sprintf('%04d', $order->id) }}</title>
     
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -88,10 +88,18 @@
             position: relative;
         }
 
-        /* receipt decoration lines */
         .receipt-header {
             text-align: center;
             margin-bottom: 1.5rem;
+        }
+
+        .receipt-logo {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 50%;
+            margin-bottom: 0.5rem;
+            border: 1px solid #cbd5e1;
         }
 
         .restaurant-name {
@@ -277,6 +285,7 @@
     <div class="receipt-container">
         
         <div class="receipt-header">
+            <img src="/logo.jpg" alt="Logo" class="receipt-logo">
             <h1 class="restaurant-name">Annam QSR</h1>
             <p class="restaurant-subtitle">Authentic South Indian Fast Food<br>123 Culinary Boulevard, Foodville</p>
             <div class="divider"></div>
@@ -285,7 +294,7 @@
         <div class="meta-info">
             <div class="meta-row">
                 <span class="meta-label">Receipt No:</span>
-                <span class="meta-value">#ORD-{{ $order->id }}</span>
+                <span class="meta-value">#{{ $order->created_at->format('Ymd') . sprintf('%04d', $order->id) }}</span>
             </div>
             <div class="meta-row">
                 <span class="meta-label">Table:</span>
@@ -352,20 +361,14 @@
             </div>
         </div>
 
-        <div class="payment-badge-container">
-            @if($order->payment_status === 'paid')
-                <span class="badge-payment badge-paid"><i class="bi bi-check-circle-fill"></i> Paid</span>
-            @else
-                <span class="badge-payment badge-unpaid"><i class="bi bi-exclamation-triangle-fill"></i> Unpaid</span>
-            @endif
-        </div>
 
-        @if($order->payment_status === 'unpaid' || $order->payment_method === 'upi')
+
+        @if((\App\Models\Feature::isActive('upi_checkout')) && ($order->payment_status === 'unpaid' || $order->payment_method === 'upi'))
             <div class="divider"></div>
             <div style="text-align: center; margin: 1.5rem 0;">
                 <p class="small fw-semibold text-secondary" style="font-size: 0.8rem; margin: 0 0 8px 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">UPI Quick Scan Checkout</p>
                 <div style="background: #ffffff; padding: 10px; display: inline-block; border: 1px solid #cbd5e1; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.03);">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=restaurant@bank&pn=Annam%20QSR&am={{ $order->total_amount }}&tn=ORD-{{ $order->id }}" alt="UPI QR Code" style="width: 150px; height: 150px; display: block;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=upi://pay?pa=restaurant@bank&pn=Annam%20QSR&am={{ $order->total_amount }}&tn={{ $order->created_at->format('Ymd') . sprintf('%04d', $order->id) }}" alt="UPI QR Code" style="width: 150px; height: 150px; display: block;">
                 </div>
                 <p class="small text-muted" style="font-size: 0.75rem; color: #64748b; margin: 6px 0 0 0;">Scan using GPay, PhonePe, or Paytm</p>
             </div>

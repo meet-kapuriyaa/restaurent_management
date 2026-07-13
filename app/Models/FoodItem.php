@@ -11,7 +11,14 @@ class FoodItem extends Model
         'price',
         'description',
         'status',
+        'category_id',
+        'image_path',
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
 
     public function orderItems()
     {

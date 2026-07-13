@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('orders', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('table_id')->nullable()->constrained('tables')->onDelete('set null');
-            $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->unsignedBigInteger('table_id')->nullable()->index();
+            $table->unsignedBigInteger('user_id')->nullable()->index();
             $table->string('customer_name');
             $table->string('contact_number');
             $table->decimal('total_amount', 10, 2)->default(0.00);

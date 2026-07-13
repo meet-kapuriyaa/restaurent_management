@@ -234,6 +234,13 @@
             margin-bottom: 1rem;
             display: block;
         }
+        
+        .category-filter-btn.active, .order-status-filter-btn.active {
+            color: #fff !important;
+            background: var(--primary-gradient) !important;
+            border-color: #15803d !important;
+            box-shadow: 0 4px 10px rgba(22, 197, 94, 0.2);
+        }
     </style>
 </head>
 <body>
@@ -293,7 +300,7 @@
         </div>
     </nav>
 
-    <div class="container">
+    <div class="container-fluid px-md-5 px-3">
 
         <!-- Banner -->
         <div class="header-banner">
@@ -307,39 +314,60 @@
             <!-- Left Side: Food Menu -->
             <div class="col-lg-7">
                 <div class="card p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="fw-bold mb-0">Menu Selection</h4>
                         <span class="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-semibold" style="color: #15803d; background-color: #dcfce7;">
                             {{ count($foodItems) }} Available Items
                         </span>
                     </div>
 
+                    <!-- Category Filtering Tabs -->
+                    <div class="d-flex flex-wrap gap-2 mb-4" id="category-filter-bar">
+                        <button type="button" class="btn btn-sm btn-outline-indigo active category-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-category="all">
+                            All
+                        </button>
+                        @foreach($categories as $cat)
+                            <button type="button" class="btn btn-sm btn-outline-indigo category-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-category="{{ $cat->name }}">
+                                {{ $cat->name }}
+                            </button>
+                        @endforeach
+                    </div>
+
                     <div class="row g-3">
                         @forelse($foodItems as $item)
-                            <div class="col-md-6">
-                                <div class="card card-menu-item p-3 h-100 d-flex flex-column justify-content-between">
-                                    <div>
-                                        <div class="d-flex justify-content-between align-items-start mb-2">
-                                            <h5 class="fw-bold mb-0">{{ $item->name }}</h5>
-                                            <span class="price-tag">₹{{ number_format($item->price, 2) }}</span>
-                                        </div>
-                                        <p class="text-secondary small mb-3">{{ $item->description ?: 'No description available.' }}</p>
+                            <div class="col-md-6 menu-card-wrapper">
+                                <div class="card card-menu-item h-100 d-flex flex-column justify-content-between overflow-hidden menu-item-card" data-category="{{ $item->category ? $item->category->name : 'Uncategorized' }}" style="border-radius: 16px;">
+                                    <div style="height: 140px; width: 100%; overflow: hidden; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); display: flex; align-items: center; justify-content: center;" class="border-bottom">
+                                        <img src="{{ $item->image_path ?: '/logo.jpg' }}" class="{{ $item->image_path ? 'w-100 h-100' : '' }}" style="{{ $item->image_path ? 'object-fit: cover;' : 'height: 110px; width: 110px; object-fit: cover; border-radius: 50%;' }}" alt="{{ $item->name }}">
                                     </div>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle">
-                                            <i class="bi bi-check-circle-fill me-1"></i> Available
-                                        </span>
-                                        <div class="menu-item-action-container" 
-                                             data-id="{{ $item->id }}"
-                                             data-name="{{ $item->name }}"
-                                             data-price="{{ $item->price }}">
-                                            <button type="button" 
-                                                    class="btn btn-sm btn-primary-gradient add-to-cart-btn"
-                                                    data-id="{{ $item->id }}"
-                                                    data-name="{{ $item->name }}"
-                                                    data-price="{{ $item->price }}">
-                                                <i class="bi bi-plus-lg me-1"></i> Add to Order
-                                            </button>
+                                    <div class="p-3 d-flex flex-column justify-content-between flex-grow-1">
+                                        <div>
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <h5 class="fw-bold mb-0 text-dark" style="font-size: 1.1rem; line-height: 1.3;">{{ $item->name }}</h5>
+                                                <span class="price-tag fw-bold text-success fs-5">₹{{ number_format($item->price, 0) }}</span>
+                                            </div>
+                                            <div class="mb-2">
+                                                <span class="badge bg-secondary-subtle text-secondary fw-semibold" style="font-size: 0.7rem;">{{ $item->category ? $item->category->name : 'Uncategorized' }}</span>
+                                            </div>
+                                            <p class="text-secondary small mb-3" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; height: 38px; line-height: 1.4;">{{ $item->description ?: 'No description available.' }}</p>
+                                        </div>
+                                        <div class="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1" style="font-size: 0.7rem;">
+                                                <i class="bi bi-check-circle-fill me-1"></i> Available
+                                            </span>
+                                            <div class="menu-item-action-container" 
+                                                 data-id="{{ $item->id }}"
+                                                 data-name="{{ $item->name }}"
+                                                 data-price="{{ $item->price }}">
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-primary-gradient add-to-cart-btn px-3 fw-semibold"
+                                                        data-id="{{ $item->id }}"
+                                                        data-name="{{ $item->name }}"
+                                                        data-price="{{ $item->price }}"
+                                                        style="border-radius: 8px;">
+                                                    <i class="bi bi-plus-lg me-1"></i> Add
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -428,11 +456,13 @@
                         <h4 class="fw-bold mb-3">Customer Details</h4>
                         <div class="mb-3">
                             <label for="customer_name" class="form-label text-secondary small fw-semibold">CUSTOMER NAME</label>
-                            <input type="text" class="form-control form-control-lg" name="customer_name" id="customer_name" placeholder="customer name" required>
+                            <input type="text" class="form-control form-control-lg" name="customer_name" id="customer_name" placeholder="customer name" list="customer-names-list" autocomplete="off" required>
+                            <datalist id="customer-names-list"></datalist>
                         </div>
                         <div class="mb-3">
                             <label for="contact_number" class="form-label text-secondary small fw-semibold">CONTACT NUMBER</label>
-                            <input type="text" class="form-control form-control-lg" name="contact_number" id="contact_number" placeholder="+1234567890" required>
+                            <input type="text" class="form-control form-control-lg" name="contact_number" id="contact_number" placeholder="+1234567890" list="customer-phones-list" autocomplete="off" required>
+                            <datalist id="customer-phones-list"></datalist>
                         </div>
                         <div class="mb-0">
                             <label for="special_instructions" class="form-label text-secondary small fw-semibold">SPECIAL INSTRUCTIONS (CHEF NOTES)</label>
@@ -488,6 +518,28 @@
                         <i class="bi bi-arrow-clockwise me-1"></i> Refresh Logs
                     </button>
                 </div>
+
+                <!-- Status Filtering Tabs -->
+                <div class="d-flex flex-wrap gap-2 mb-4" id="order-status-filter-bar">
+                    <button type="button" class="btn btn-sm btn-outline-indigo active order-status-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-status="all">
+                        All
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-indigo order-status-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-status="pending">
+                        Pending
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-indigo order-status-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-status="preparing">
+                        Preparing
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-indigo order-status-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-status="ready">
+                        Ready
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-indigo order-status-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-status="delivered">
+                        Delivered
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-indigo order-status-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-status="completed">
+                        Completed
+                    </button>
+                </div>
                 
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
@@ -522,9 +574,18 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- Pusher & Echo Libraries for Real-Time WebSockets -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pusher/8.3.0/pusher.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/laravel-echo@1.16.1/dist/echo.iife.js"></script>
 
     <script>
         $(document).ready(function() {
+            // Setup AJAX CSRF
+            $.ajaxSetup({
+                headers: {
+                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                }
+            });
             // Cart Data Store
             let cart = {};
 
@@ -830,35 +891,123 @@
                 }
             });
 
-            // Auto-fetch customer name by contact number
-            $('#contact_number').on('blur change', function() {
-                // If it is set to readonly (because we selected an occupied table), don't fetch/overwrite
-                if ($(this).prop('readonly')) {
+            // Dynamic Customer Auto-fetch by Name and Phone
+            let searchTimeout = null;
+
+            function showWelcomeToast(name) {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    icon: 'success',
+                    title: `Welcome back, ${name}!`,
+                    showConfirmButton: false,
+                    timer: 3000
+                });
+            }
+
+            // Search by Name
+            $('#customer_name').on('input', function() {
+                if ($(this).prop('readonly')) return;
+
+                const nameVal = $(this).val().trim();
+
+                // Check if the typed value matches any option in the datalist (selection event)
+                let matchedOption = null;
+                $('#customer-names-list option').each(function() {
+                    if ($(this).val() === nameVal) {
+                        matchedOption = $(this);
+                        return false; // Break loop
+                    }
+                });
+
+                if (matchedOption) {
+                    const phone = matchedOption.data('phone');
+                    if (phone) {
+                        $('#contact_number').val(phone);
+                        showWelcomeToast(nameVal);
+                    }
                     return;
                 }
+
+                // If not matched, trigger search with debounce
+                clearTimeout(searchTimeout);
+                if (nameVal.length >= 2) {
+                    searchTimeout = setTimeout(function() {
+                        $.ajax({
+                            url: "{{ route('customers.search') }}",
+                            type: 'GET',
+                            data: { query: nameVal },
+                            success: function(response) {
+                                const $datalist = $('#customer-names-list');
+                                $datalist.empty();
+                                response.forEach(customer => {
+                                    $datalist.append(`<option value="${customer.name}" data-phone="${customer.phone_number}">`);
+                                });
+                            }
+                        });
+                    }, 300);
+                }
+            });
+
+            // Search by Phone
+            $('#contact_number').on('input', function() {
+                if ($(this).prop('readonly')) return;
+
+                const phoneVal = $(this).val().trim();
+
+                // Check if the typed value matches any option in the datalist (selection event)
+                let matchedOption = null;
+                $('#customer-phones-list option').each(function() {
+                    if ($(this).val() === phoneVal) {
+                        matchedOption = $(this);
+                        return false; // Break loop
+                    }
+                });
+
+                if (matchedOption) {
+                    const name = matchedOption.data('name');
+                    if (name) {
+                        $('#customer_name').val(name);
+                        showWelcomeToast(name);
+                    }
+                    return;
+                }
+
+                // If not matched, trigger search with debounce
+                clearTimeout(searchTimeout);
+                if (phoneVal.length >= 2) {
+                    searchTimeout = setTimeout(function() {
+                        $.ajax({
+                            url: "{{ route('customers.search') }}",
+                            type: 'GET',
+                            data: { query: phoneVal },
+                            success: function(response) {
+                                const $datalist = $('#customer-phones-list');
+                                $datalist.empty();
+                                response.forEach(customer => {
+                                    $datalist.append(`<option value="${customer.phone_number}" data-name="${customer.name}">`);
+                                });
+                            }
+                        });
+                    }, 300);
+                }
+            });
+
+            // Fallback phone lookup on blur (for full number pasting)
+            $('#contact_number').on('blur', function() {
+                if ($(this).prop('readonly')) return;
                 
                 const phone = $(this).val().trim();
-                if (phone.length >= 5) {
+                const currentName = $('#customer_name').val().trim();
+                if (phone.length >= 5 && !currentName) {
                     $.ajax({
                         url: "{{ route('customers.lookup') }}",
                         type: 'GET',
                         data: { phone: phone },
                         success: function(response) {
                             if (response.success && response.name) {
-                                const currentName = $('#customer_name').val().trim();
-                                if (!currentName) {
-                                    $('#customer_name').val(response.name);
-                                    
-                                    // Visual cue/toast
-                                    Swal.fire({
-                                        toast: true,
-                                        position: 'top-end',
-                                        icon: 'success',
-                                        title: `Welcome back, ${response.name}!`,
-                                        showConfirmButton: false,
-                                        timer: 3000
-                                    });
-                                }
+                                $('#customer_name').val(response.name);
+                                showWelcomeToast(response.name);
                             }
                         }
                     });
@@ -1047,6 +1196,85 @@
                 });
             }
 
+            // Generate HTML row for orders list
+            function generateOrderRowHtml(order) {
+                let itemsText = '';
+                order.order_items.forEach((item, idx) => {
+                    const itemName = item.food_item ? item.food_item.name : 'Unknown Food';
+                    itemsText += `<span class="badge bg-light text-dark border me-1 mb-1">${itemName} (x${item.quantity})</span>`;
+                });
+
+                 let statusBadge = '';
+                 if (order.status === 'pending') {
+                     statusBadge = '<span class="badge bg-warning text-dark badge-status">Pending</span>';
+                 } else if (order.status === 'preparing') {
+                     statusBadge = '<span class="badge bg-primary badge-status">Preparing</span>';
+                 } else if (order.status === 'ready') {
+                     statusBadge = '<span class="badge bg-success badge-status">Ready</span>';
+                 } else if (order.status === 'delivered') {
+                     statusBadge = '<span class="badge bg-info text-dark badge-status">Delivered</span>';
+                 } else if (order.status === 'completed') {
+                     statusBadge = '<span class="badge bg-secondary-subtle text-secondary badge-status">Completed</span>';
+                 } else {
+                     statusBadge = `<span class="badge bg-secondary badge-status">${order.status}</span>`;
+                 }
+
+                 let paymentBadge = order.payment_status === 'paid' 
+                     ? '<span class="badge bg-success badge-status">Paid</span>' 
+                     : '<span class="badge bg-secondary badge-status">Unpaid</span>';
+
+                const placedTime = new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+                return `
+                    <tr class="order-monitor-row" id="order-row-${order.id}" data-status="${order.status}">
+                        <td class="fw-bold">#ORD-${order.id}</td>
+                        <td>
+                            ${order.table ? `<div class="mb-1"><span class="badge text-white" style="background: var(--primary-gradient) !important; font-size: 0.75rem;"><i class="bi bi-hash"></i> Table ${order.table.table_number}</span></div>` : ''}
+                            <div class="fw-semibold">${order.customer_name}</div>
+                            <div class="text-muted small">${order.contact_number}</div>
+                        </td>
+                        <td>${itemsText}</td>
+                        <td class="fw-semibold text-primary">₹${parseFloat(order.total_amount).toFixed(2)}</td>
+                        <td>${statusBadge}</td>
+                        <td>${paymentBadge}</td>
+                        <td class="text-secondary small">${placedTime}</td>
+                        <td>
+                            ${order.status === 'completed' ? `
+                                <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill" style="font-size: 0.75rem;"><i class="bi bi-check-circle-fill me-1"></i> Completed</span>
+                            ` : (order.status === 'delivered' ? `
+                                <button type="button" class="btn btn-sm btn-success complete-order-btn px-3 fw-medium" data-id="${order.id}">
+                                    <i class="bi bi-check-lg me-1"></i> Complete Order
+                                </button>
+                            ` : (order.status === 'ready' ? `
+                                <button type="button" class="btn btn-sm btn-warning deliver-order-btn px-3 fw-medium text-dark" data-id="${order.id}">
+                                    Ready for Delivery
+                                </button>
+                            ` : `
+                                <button type="button" class="btn btn-sm btn-outline-secondary px-3 fw-medium" disabled title="Order must be prepared by the kitchen first" style="cursor: not-allowed; opacity: 0.65;">
+                                    <i class="bi bi-hourglass-split"></i> Preparing
+                                </button>
+                            `))}
+                        </td>
+                    </tr>
+                `;
+            }
+
+            function showEmptyStateMessage() {
+                $('#pending-orders-tbody').html(`
+                    <tr>
+                        <td colspan="8" class="text-center py-4 text-muted">
+                            <i class="bi bi-info-circle me-1"></i> No pending orders at the moment.
+                        </td>
+                    </tr>
+                `);
+            }
+
+            function updateEmptyStateMessage() {
+                if ($('.order-monitor-row').length === 0) {
+                    showEmptyStateMessage();
+                }
+            }
+
             // Function to load and render live pending orders
             function loadPendingOrders() {
                 const $tbody = $('#pending-orders-tbody');
@@ -1058,85 +1286,112 @@
                         $tbody.empty();
                         
                         if (orders.length === 0) {
-                            $tbody.html(`
-                                <tr>
-                                    <td colspan="8" class="text-center py-4 text-muted">
-                                        <i class="bi bi-info-circle me-1"></i> No pending orders at the moment.
-                                    </td>
-                                </tr>
-                            `);
+                            showEmptyStateMessage();
                             return;
                         }
 
                         orders.forEach(order => {
-                            // Formulate items listing text
-                            let itemsText = '';
-                            order.order_items.forEach((item, idx) => {
-                                const itemName = item.food_item ? item.food_item.name : 'Unknown Food';
-                                itemsText += `<span class="badge bg-light text-dark border me-1 mb-1">${itemName} (x${item.quantity})</span>`;
-                            });
-
-                             // Style badges dynamically
-                             let statusBadge = '';
-                             if (order.status === 'pending') {
-                                 statusBadge = '<span class="badge bg-warning text-dark badge-status">Pending</span>';
-                             } else if (order.status === 'preparing') {
-                                 statusBadge = '<span class="badge bg-primary badge-status">Preparing</span>';
-                             } else if (order.status === 'ready') {
-                                 statusBadge = '<span class="badge bg-success badge-status">Ready</span>';
-                             } else if (order.status === 'completed') {
-                                 statusBadge = '<span class="badge bg-info text-dark badge-status">Completed</span>';
-                             } else {
-                                 statusBadge = `<span class="badge bg-secondary badge-status">${order.status}</span>`;
-                             }
-                             let paymentBadge = order.payment_status === 'paid' 
-                                 ? '<span class="badge bg-success badge-status">Paid</span>' 
-                                 : '<span class="badge bg-secondary badge-status">Unpaid</span>';
-
-                            // Format placed time
-                            const placedTime = new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-                            $tbody.append(`
-                                <tr>
-                                    <td class="fw-bold">#ORD-${order.id}</td>
-                                    <td>
-                                        ${order.table ? `<div class="mb-1"><span class="badge text-white" style="background: var(--primary-gradient) !important; font-size: 0.75rem;"><i class="bi bi-hash"></i> Table ${order.table.table_number}</span></div>` : ''}
-                                        <div class="fw-semibold">${order.customer_name}</div>
-                                        <div class="text-muted small">${order.contact_number}</div>
-                                    </td>
-                                    <td>${itemsText}</td>
-                                    <td class="fw-semibold text-primary">₹${parseFloat(order.total_amount).toFixed(2)}</td>
-                                    <td>${statusBadge}</td>
-                                    <td>${paymentBadge}</td>
-                                    <td class="text-secondary small">${placedTime}</td>
-                                    <td>
-                                        ${order.status === 'completed' ? `
-                                            <span class="badge bg-secondary-subtle text-secondary border border-secondary px-3 py-2 rounded-pill" style="font-size: 0.75rem;"><i class="bi bi-check-circle-fill me-1"></i> Completed</span>
-                                        ` : (order.status === 'ready' ? `
-                                            <button type="button" class="btn btn-sm btn-success complete-order-btn px-3 fw-medium" data-id="${order.id}">
-                                                <i class="bi bi-check-lg me-1"></i> Complete Order
-                                            </button>
-                                        ` : `
-                                            <button type="button" class="btn btn-sm btn-outline-secondary px-3 fw-medium" disabled title="Order must be prepared by the kitchen first" style="cursor: not-allowed; opacity: 0.65;">
-                                                <i class="bi bi-hourglass-split"></i> Preparing
-                                            </button>
-                                        `)}
-                                    </td>
-                                </tr>
-                            `);
+                            $tbody.append(generateOrderRowHtml(order));
                         });
+
+                        // Re-apply active status filter
+                        const activeStatus = $('.order-status-filter-btn.active').attr('data-status') || 'all';
+                        filterOrderRows(activeStatus);
                     },
                     error: function() {
                         $tbody.html(`
                             <tr>
                                 <td colspan="8" class="text-center py-4 text-danger">
-                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Failed to refresh live orders.
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> Failed to load live orders.
                                 </td>
                             </tr>
                         `);
                     }
                 });
             }
+
+            // Initialize Laravel Echo client for real-time WebSocket listening
+            try {
+                window.Pusher = Pusher;
+                window.Echo = new Echo({
+                    broadcaster: 'reverb',
+                    key: '{{ env("REVERB_APP_KEY") }}',
+                    wsHost: '{{ env("REVERB_HOST", "localhost") }}',
+                    wsPort: {{ env("REVERB_PORT", 8080) }},
+                    wssPort: {{ env("REVERB_PORT", 8080) }},
+                    forceTLS: false,
+                    enabledTransports: ['ws', 'wss'],
+                });
+
+                window.Echo.channel('orders')
+                    .listen('OrderUpdated', (e) => {
+                        console.log('Real-Time Order Update Received:', e);
+                        handleOrderBroadcast(e.order);
+                    });
+            } catch (err) {
+                console.error('Failed to initialize real-time notifications via Laravel Echo:', err);
+            }
+
+            // Handle incoming dynamic order updates via WebSockets
+            function handleOrderBroadcast(order) {
+                const $tbody = $('#pending-orders-tbody');
+                
+                // 1. Remove from list if completed + paid + NOT today's order
+                const orderDate = new Date(order.created_at).toDateString();
+                const todayDate = new Date().toDateString();
+                if (order.status === 'completed' && order.payment_status === 'paid' && orderDate !== todayDate) {
+                    $(`#order-row-${order.id}`).fadeOut(300, function() {
+                        $(this).remove();
+                        updateEmptyStateMessage();
+                    });
+                    return;
+                }
+
+                // 2. Clear any empty state indicator row
+                $tbody.find('.text-muted').closest('tr').remove();
+
+                const existingRow = $(`#order-row-${order.id}`);
+                const newRowHtml = generateOrderRowHtml(order);
+
+                if (existingRow.length > 0) {
+                    // Update current row in-place
+                    existingRow.replaceWith(newRowHtml);
+                } else {
+                    // Prepend new orders at the top of the monitor
+                    $tbody.prepend(newRowHtml);
+                }
+
+                // 3. Re-apply active status filter
+                const activeStatus = $('.order-status-filter-btn.active').attr('data-status') || 'all';
+                filterOrderRows(activeStatus);
+            }
+
+            // Click listener for deliver order button
+            $(document).on('click', '.deliver-order-btn', function() {
+                const orderId = $(this).data('id');
+                const btn = $(this);
+                
+                $.ajax({
+                    url: `/orders/${orderId}/deliver`,
+                    type: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+                    },
+                    success: function(res) {
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'bottom-end',
+                            showConfirmButton: false,
+                            timer: 2000
+                        });
+                        Toast.fire({ icon: 'success', title: res.message });
+                        loadPendingOrders();
+                    },
+                    error: function(xhr) {
+                        Swal.fire({ icon: 'error', title: 'Error', text: xhr.responseJSON?.message || 'Failed to mark order as delivered.' });
+                    }
+                });
+            });
 
             // Click listener for complete order button
             $(document).on('click', '.complete-order-btn', function() {
@@ -1206,13 +1461,54 @@
 
 
 
+            // Category filter click event
+            $('.category-filter-btn').on('click', function() {
+                $('.category-filter-btn').removeClass('active');
+                $(this).addClass('active');
+                
+                const selectedCategory = $(this).data('category');
+                
+                if (selectedCategory === 'all') {
+                    $('.menu-item-card').closest('.menu-card-wrapper').fadeIn(200);
+                } else {
+                    $('.menu-item-card').each(function() {
+                        const card = $(this);
+                        const category = card.data('category');
+                        if (category === selectedCategory) {
+                            card.closest('.menu-card-wrapper').fadeIn(200);
+                        } else {
+                            card.closest('.menu-card-wrapper').fadeOut(200);
+                        }
+                    });
+                }
+            });
+
+            // Order Status filter click event
+            $(document).on('click', '.order-status-filter-btn', function() {
+                $('.order-status-filter-btn').removeClass('active');
+                $(this).addClass('active');
+                
+                const selectedStatus = $(this).attr('data-status');
+                filterOrderRows(selectedStatus);
+            });
+
+            function filterOrderRows(status) {
+                if (status === 'all') {
+                    $('.order-monitor-row').fadeIn(200);
+                } else {
+                    $('.order-monitor-row').each(function() {
+                        const row = $(this);
+                        if (row.attr('data-status') === status) {
+                            row.fadeIn(200);
+                        } else {
+                            row.fadeOut(200);
+                        }
+                    });
+                }
+            }
+
             // Initial load of orders
             loadPendingOrders();
-
-            // Background Live Sync polling every 4 seconds
-            setInterval(function() {
-                loadPendingOrders();
-            }, 4000);
         });
     </script>
 

@@ -30,11 +30,11 @@
         </td>
         <td>
             @if($order->payment_status === 'paid')
-                <button type="button" class="btn btn-sm btn-success order-payment-btn" data-id="{{ $order->id }}" data-status="paid" style="width: 100px;">
+                <button type="button" class="btn btn-sm btn-success order-payment-btn" data-id="{{ $order->id }}" data-status="paid" style="width: 100px; cursor: default; pointer-events: none; opacity: 1 !important;">
                     <i class="bi bi-check-circle-fill"></i> Paid
                 </button>
             @else
-                <button type="button" class="btn btn-sm btn-danger order-payment-btn" data-id="{{ $order->id }}" data-status="unpaid" style="width: 100px;">
+                <button type="button" class="btn btn-sm btn-danger order-payment-btn" data-id="{{ $order->id }}" data-status="unpaid" style="width: 100px; cursor: pointer;" onclick="markOrderAsPaid({{ $order->id }}, this)">
                     <i class="bi bi-x-circle-fill"></i> Unpaid
                 </button>
             @endif

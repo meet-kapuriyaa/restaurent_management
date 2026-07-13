@@ -22,6 +22,7 @@ Route::middleware('auth')->group(function () {
 
     // Customer and order lookup routes
     Route::get('/customers/lookup', [OrderController::class, 'lookupCustomer'])->name('customers.lookup');
+    Route::get('/customers/search', [OrderController::class, 'searchCustomers'])->name('customers.search');
     Route::get('/orders/active-by-table/{table}', [OrderController::class, 'getActiveOrderByTable'])->name('orders.active-by-table');
 
     // Profile Management Routes
@@ -35,6 +36,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/order', [OrderController::class, 'index'])->name('orders.index');
         Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
         Route::get('/orders/pending', [OrderController::class, 'getPendingOrders'])->name('orders.pending');
+        Route::post('/orders/{order}/deliver', [OrderController::class, 'deliver'])->name('orders.deliver');
         Route::post('/orders/{order}/complete', [OrderController::class, 'complete'])->name('orders.complete');
     });
 
@@ -54,6 +56,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/food-items/{foodItem}', [AdminController::class, 'deleteFoodItem'])->name('admin.food-items.delete');
         Route::patch('/food-items/{foodItem}/status', [AdminController::class, 'toggleFoodItemStatus'])->name('admin.food-items.status');
         
+        // Category CRUD
+        Route::post('/categories', [AdminController::class, 'storeCategory'])->name('admin.categories.store');
+        Route::post('/categories/sort', [AdminController::class, 'sortCategories'])->name('admin.categories.sort');
+        Route::put('/categories/{category}', [AdminController::class, 'updateCategory'])->name('admin.categories.update');
+        Route::delete('/categories/{category}', [AdminController::class, 'deleteCategory'])->name('admin.categories.delete');
+        
         // Table CRUD
         Route::post('/tables', [AdminController::class, 'storeTable'])->name('admin.tables.store');
         Route::put('/tables/{table}', [AdminController::class, 'updateTable'])->name('admin.tables.update');
@@ -68,12 +76,36 @@ Route::middleware('auth')->group(function () {
 
         // CRM Controls
         Route::get('/crm', [AdminController::class, 'crmIndex'])->name('admin.crm.index');
+        Route::post('/crm', [AdminController::class, 'crmStore'])->name('admin.crm.store');
+    });
 
-        // Access Control & User Role Management
-        Route::post('/permissions', [AdminController::class, 'updatePermissions'])->name('admin.permissions.update');
-        Route::post('/roles', [AdminController::class, 'createRole'])->name('admin.roles.create');
-        Route::post('/roles/toggle-status', [AdminController::class, 'toggleRoleStatus'])->name('admin.roles.toggle-status');
-        Route::patch('/users/{user}/role', [AdminController::class, 'updateUserRole'])->name('admin.users.role');
-        Route::delete('/users/{user}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
+    // Dedicated Role Management Page & Actions (Requires 'manage_roles' permission)
+    Route::middleware('permission:manage_roles')->group(function () {
+        Route::get('/admin-role', [AdminController::class, 'adminRole'])->name('admin.roles.index');
+        Route::post('/admin/permissions', [AdminController::class, 'updatePermissions'])->name('admin.permissions.update');
+        Route::post('/admin/roles', [AdminController::class, 'createRole'])->name('admin.roles.create');
+        Route::post('/admin/roles/toggle-status', [AdminController::class, 'toggleRoleStatus'])->name('admin.roles.toggle-status');
+        Route::post('/admin/features/toggle', [AdminController::class, 'toggleFeature'])->name('admin.features.toggle');
+        Route::post('/admin/users', [AdminController::class, 'storeUser'])->name('admin.users.store');
+        Route::patch('/admin/users/{user}/status', [AdminController::class, 'toggleUserStatus'])->name('admin.users.status');
+        Route::put('/admin/users/{user}', [AdminController::class, 'updateUser'])->name('admin.users.update');
+        Route::patch('/admin/users/{user}/role', [AdminController::class, 'updateUserRole'])->name('admin.users.role');
+        Route::patch('/admin/users/{user}/salary', [AdminController::class, 'updateUserSalary'])->name('admin.users.salary');
+        Route::delete('/admin/users/{user}', [AdminController::class, 'deleteUser'])->name('admin.users.delete');
+        Route::delete('/admin/roles/{role}', [AdminController::class, 'deleteRole'])->name('admin.roles.delete');
+
+        // Dynamic Modules Menu Builder Routes
+        Route::get('/admin/modules', [\App\Http\Controllers\ModuleController::class, 'index'])->name('admin.modules.index');
+        Route::post('/admin/modules', [\App\Http\Controllers\ModuleController::class, 'store'])->name('admin.modules.store');
+        Route::put('/admin/modules/{module}', [\App\Http\Controllers\ModuleController::class, 'update'])->name('admin.modules.update');
+        Route::delete('/admin/modules/{module}', [\App\Http\Controllers\ModuleController::class, 'destroy'])->name('admin.modules.destroy');
+        Route::post('/admin/modules/{module}/toggle', [\App\Http\Controllers\ModuleController::class, 'toggle'])->name('admin.modules.toggle');
+        Route::post('/admin/modules/sort', [\App\Http\Controllers\ModuleController::class, 'updateOrder'])->name('admin.modules.sort');
+
+        // Dynamic Icons CRUD Routes
+        Route::get('/icon', [\App\Http\Controllers\IconController::class, 'index'])->name('admin.icons.index');
+        Route::post('/icon', [\App\Http\Controllers\IconController::class, 'store'])->name('admin.icons.store');
+        Route::put('/icon/{icon}', [\App\Http\Controllers\IconController::class, 'update'])->name('admin.icons.update');
+        Route::delete('/icon/{icon}', [\App\Http\Controllers\IconController::class, 'destroy'])->name('admin.icons.destroy');
     });
 });

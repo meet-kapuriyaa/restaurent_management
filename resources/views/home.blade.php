@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Annam QSR - Home Portal</title>
+    <title>Annam QSR - Central Landing</title>
     
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -171,7 +171,7 @@
 </head>
 <body class="py-4">
 
-    <div class="container my-auto">
+    <div class="container-fluid px-md-5 px-3 my-auto">
         <!-- Header -->
         <header class="d-flex justify-content-between align-items-center mb-4">
             <a href="#" class="navbar-brand d-flex align-items-center gap-2">
@@ -179,20 +179,26 @@
                 <span>Annam QSR</span>
             </a>
             <div class="d-flex align-items-center gap-3">
-                <span class="badge bg-success-subtle text-success role-badge">
-                    Role: {{ ucfirst(Auth::user()->role) }}
-                </span>
+                @if(Auth::user()->is_active === false)
+                    <span class="badge bg-danger-subtle text-danger role-badge">
+                        Status: Inactive
+                    </span>
+                @else
+                    <span class="badge bg-success-subtle text-success role-badge">
+                        Role: {{ ucfirst(Auth::user()->role) }}
+                    </span>
+                @endif
                 <div class="dropdown">
                     <button class="profile-avatar-trigger dropdown-toggle" type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false" style="outline: none;">
                         <img src="{{ Auth::user()->avatar }}" alt="Avatar" class="profile-avatar-img">
-                        <span class="profile-avatar-status"></span>
+                        <span class="profile-avatar-status" style="{{ Auth::user()->is_active === false ? 'background-color: #ef4444 !important;' : '' }}"></span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow border-0" aria-labelledby="userMenu" style="border-radius: 12px; min-width: 240px; padding: 0;">
                         <li>
                             <a class="dropdown-item d-flex align-items-center gap-3 py-3 px-4" href="{{ route('profile.show') }}" style="border-top-left-radius: 12px; border-top-right-radius: 12px; background: none;">
                                 <div class="position-relative d-inline-block">
                                     <img src="{{ Auth::user()->avatar }}" alt="Avatar" class="rounded-circle" style="width: 48px; height: 48px; object-fit: cover; border: 1px solid #e2e8f0;">
-                                    <span class="position-absolute" style="bottom: 0; right: 0; width: 12px; height: 12px; background-color: #22c55e; border: 2px solid #ffffff; border-radius: 50%;"></span>
+                                    <span class="position-absolute" style="bottom: 0; right: 0; width: 12px; height: 12px; background-color: {{ Auth::user()->is_active === false ? '#ef4444' : '#22c55e' }}; border: 2px solid #ffffff; border-radius: 50%;"></span>
                                 </div>
                                 <div class="d-flex flex-column">
                                     <span class="fw-bold text-dark" style="font-size: 1.05rem; line-height: 1.2;">{{ Auth::user()->name }}</span>
@@ -215,9 +221,15 @@
         </header>
 
         <!-- Banner -->
-        <div class="header-banner">
+        <div class="header-banner" style="{{ Auth::user()->is_active === false ? 'background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.25) !important;' : '' }}">
             <h1 class="fw-bold mb-2">Welcome back, {{ Auth::user()->name }}!</h1>
-            <p class="mb-0 opacity-75">Access your assigned system portals and manage restaurant services below.</p>
+            <p class="mb-0 opacity-75">
+                @if(Auth::user()->is_active === false)
+                    Your account is currently inactive. Please check your status details below.
+                @else
+                    Access your assigned system portals and manage restaurant services below.
+                @endif
+            </p>
         </div>
 
         @php
@@ -228,7 +240,25 @@
 
         <!-- Portals Grid -->
         <div class="row g-4 justify-content-center">
-            @if(!$hasWaiter && !$hasKitchen && !$hasAdmin)
+            @if(Auth::user()->is_active === false)
+                <!-- Inactive Account View -->
+                <div class="col-md-8 text-center py-5">
+                    <div class="card p-5 border-0 shadow-sm" style="border-radius: 20px; border-top: 5px solid #ef4444 !important;">
+                        <div class="mb-4">
+                            <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 4rem;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-3 text-danger">Account Deactivated</h3>
+                        <p class="text-secondary mb-4 mx-auto" style="max-width: 500px;">
+                            Your account is inactive. Please contact the manager or admin.
+                        </p>
+                        <div class="d-inline-block">
+                            <button type="button" class="btn btn-outline-danger px-4 py-2" onclick="location.reload()">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Check Status
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            @elseif(!$hasWaiter && !$hasKitchen && !$hasAdmin)
                 <!-- Pending Access View -->
                 <div class="col-md-8 text-center py-5">
                     <div class="card p-5 border-0 shadow-sm" style="border-radius: 20px;">
@@ -248,14 +278,14 @@
                 </div>
             @else
                 <!-- Waiter Terminal Portal Card -->
-                @if($hasWaiter)
+                @if($hasWaiter && App\Models\Feature::isActive('waiter_terminal'))
                     <div class="col-md-4">
                         <div class="card portal-card p-4 d-flex flex-column justify-content-between">
                             <div>
                                 <div class="card-icon icon-waiter">
                                     <i class="bi bi-shop"></i>
                                 </div>
-                                <h4 class="fw-bold text-dark mb-2">Waiter Terminal</h4>
+                                <h4 class="fw-bold text-dark mb-2">Order Panel</h4>
                                 <p class="text-secondary small mb-4">
                                     Place restaurant orders, customize modifiers, specify customer details, choose tables, and print invoices.
                                 </p>
@@ -268,7 +298,7 @@
                 @endif
 
                 <!-- Kitchen Display Terminal Portal Card -->
-                @if($hasKitchen)
+                @if($hasKitchen && App\Models\Feature::isActive('kitchen_terminal'))
                     <div class="col-md-4">
                         <div class="card portal-card p-4 d-flex flex-column justify-content-between">
                             <div>
