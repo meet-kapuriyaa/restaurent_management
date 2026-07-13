@@ -271,10 +271,20 @@ class DatabaseSeeder extends Seeder
             Feature::updateOrCreate(['key' => $f['key']], $f);
         }
 
-        // Seed default navigation modules
-        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        $driver = \Illuminate\Support\Facades\DB::getDriverName();
+        if ($driver === 'mysql') {
+            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        } elseif ($driver === 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement('PRAGMA foreign_keys = OFF;');
+        }
+
         Module::truncate();
-        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+        if ($driver === 'mysql') {
+            \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        } elseif ($driver === 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement('PRAGMA foreign_keys = ON;');
+        }
 
         $modules = [
             [
