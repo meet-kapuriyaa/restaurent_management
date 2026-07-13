@@ -1195,6 +1195,78 @@
                         </li>
                     </ul>
 
+                    <!-- Global Audit Filter Period Bar -->
+                    <div class="d-flex flex-wrap align-items-center gap-2 mb-4">
+                        <span class="small fw-semibold text-secondary mb-0"><i class="bi bi-funnel-fill text-success"></i> FILTER PERIOD:</span>
+                        <input type="hidden" id="audit-active-filter-type" value="all">
+                        
+                        <div class="d-flex flex-wrap gap-2" id="admin-audit-filter-bar">
+                            <button type="button" class="btn btn-sm btn-outline-secondary active admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="all">
+                                All Records
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="day">
+                                Day
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="month">
+                                Month
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="year">
+                                Year
+                            </button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="range">
+                                Custom Range
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Date Selection Panel (Shown dynamically above the buttons) -->
+                    <div id="audit-date-inputs-container" class="mb-4 p-3 bg-light border rounded-3 shadow-sm" style="display: none; width: 100%;">
+                        <div class="row g-3 align-items-end">
+                            <!-- Day picker: full calendar -->
+                            <div class="col-md-3" id="audit-filter-day-wrapper" style="display: none;">
+                                <label for="audit_filter_date" class="form-label text-secondary fw-semibold small mb-1">Select Date</label>
+                                <input type="date" id="audit_filter_date" class="form-control form-control-sm" style="border-radius: 8px;">
+                            </div>
+                            <!-- Month picker: only month and year -->
+                            <div class="col-md-3" id="audit-filter-month-wrapper" style="display: none;">
+                                <label for="audit_filter_month" class="form-label text-secondary fw-semibold small mb-1">Select Month</label>
+                                <input type="month" id="audit_filter_month" class="form-control form-control-sm" style="border-radius: 8px;">
+                            </div>
+                            <!-- Year picker: select option dropdown of years -->
+                            <div class="col-md-3" id="audit-filter-year-wrapper" style="display: none;">
+                                <label for="audit_filter_year" class="form-label text-secondary fw-semibold small mb-1">Select Year</label>
+                                <select id="audit_filter_year" class="form-select form-select-sm" style="border-radius: 8px;">
+                                    <option value="">Choose Year</option>
+                                    <option value="2024">2024</option>
+                                    <option value="2025">2025</option>
+                                    <option value="2026" selected>2026</option>
+                                    <option value="2027">2027</option>
+                                    <option value="2028">2028</option>
+                                    <option value="2029">2029</option>
+                                    <option value="2030">2030</option>
+                                </select>
+                            </div>
+                            <!-- Custom Range picker -->
+                            <div class="col-md-3" id="audit-filter-from-wrapper" style="display: none;">
+                                <label for="audit_from_date" class="form-label text-secondary fw-semibold small mb-1">From Date</label>
+                                <input type="date" id="audit_from_date" class="form-control form-control-sm" style="border-radius: 8px;">
+                            </div>
+                            <div class="col-md-3" id="audit-filter-to-wrapper" style="display: none;">
+                                <label for="audit_to_date" class="form-label text-secondary fw-semibold small mb-1">To Date</label>
+                                <input type="date" id="audit_to_date" class="form-control form-control-sm" style="border-radius: 8px;">
+                            </div>
+                            <!-- Action Buttons -->
+                            <div class="col-md-3 d-flex gap-2">
+                                <button type="button" id="apply-audit-filter-btn" class="btn btn-sm btn-primary fw-semibold px-4 d-inline-flex align-items-center justify-content-center" style="background-color: #15803d; border: none; height: 36px; border-radius: 8px;">
+                                    <i class="bi bi-funnel-fill me-1"></i> Apply
+                                </button>
+                                <button type="button" id="reset-audit-filter-btn" class="btn btn-sm btn-outline-secondary fw-semibold px-3 d-inline-flex align-items-center justify-content-center" style="height: 36px; border-radius: 8px;">
+                                    <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="tab-content" id="auditSubTabContent">
                         <!-- Sub-Pane 1: Sales Ledger -->
                         <div class="tab-pane fade show active" id="sales-ledger-pane" role="tabpanel" aria-labelledby="sales-ledger-subtab">
@@ -1236,79 +1308,8 @@
                                 </div>
                             </div>
 
-                            <!-- Date Selection Panel (Shown dynamically above the buttons) -->
-                            <div id="audit-date-inputs-container" class="mb-3 p-3 bg-light border rounded-3 shadow-sm" style="display: none; width: 100%;">
-                                <div class="row g-3 align-items-end">
-                                    <!-- Day picker: full calendar -->
-                                    <div class="col-md-3" id="audit-filter-day-wrapper" style="display: none;">
-                                        <label for="audit_filter_date" class="form-label text-secondary fw-semibold small mb-1">Select Date</label>
-                                        <input type="date" id="audit_filter_date" class="form-control form-control-sm" style="border-radius: 8px;">
-                                    </div>
-                                    <!-- Month picker: only month and year -->
-                                    <div class="col-md-3" id="audit-filter-month-wrapper" style="display: none;">
-                                        <label for="audit_filter_month" class="form-label text-secondary fw-semibold small mb-1">Select Month</label>
-                                        <input type="month" id="audit_filter_month" class="form-control form-control-sm" style="border-radius: 8px;">
-                                    </div>
-                                    <!-- Year picker: select option dropdown of years -->
-                                    <div class="col-md-3" id="audit-filter-year-wrapper" style="display: none;">
-                                        <label for="audit_filter_year" class="form-label text-secondary fw-semibold small mb-1">Select Year</label>
-                                        <select id="audit_filter_year" class="form-select form-select-sm" style="border-radius: 8px;">
-                                            <option value="">Choose Year</option>
-                                            <option value="2024">2024</option>
-                                            <option value="2025">2025</option>
-                                            <option value="2026" selected>2026</option>
-                                            <option value="2027">2027</option>
-                                            <option value="2028">2028</option>
-                                            <option value="2029">2029</option>
-                                            <option value="2030">2030</option>
-                                        </select>
-                                    </div>
-                                    <!-- Custom Range picker -->
-                                    <div class="col-md-3" id="audit-filter-from-wrapper" style="display: none;">
-                                        <label for="audit_from_date" class="form-label text-secondary fw-semibold small mb-1">From Date</label>
-                                        <input type="date" id="audit_from_date" class="form-control form-control-sm" style="border-radius: 8px;">
-                                    </div>
-                                    <div class="col-md-3" id="audit-filter-to-wrapper" style="display: none;">
-                                        <label for="audit_to_date" class="form-label text-secondary fw-semibold small mb-1">To Date</label>
-                                        <input type="date" id="audit_to_date" class="form-control form-control-sm" style="border-radius: 8px;">
-                                    </div>
-                                    <!-- Action Buttons -->
-                                    <div class="col-md-3 d-flex gap-2">
-                                        <button type="button" id="apply-audit-filter-btn" class="btn btn-sm btn-primary fw-semibold px-4 d-inline-flex align-items-center justify-content-center" style="background-color: #15803d; border: none; height: 36px; border-radius: 8px;">
-                                            <i class="bi bi-funnel-fill me-1"></i> Apply
-                                        </button>
-                                        <button type="button" id="reset-audit-filter-btn" class="btn btn-sm btn-outline-secondary fw-semibold px-3 d-inline-flex align-items-center justify-content-center" style="height: 36px; border-radius: 8px;">
-                                            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Actions & Filter Row -->
-                            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="small fw-semibold text-secondary mb-0"><i class="bi bi-funnel-fill text-success"></i> FILTER PERIOD:</span>
-                                    <input type="hidden" id="audit-active-filter-type" value="all">
-                                    
-                                    <!-- Pill Buttons for Period Filter -->
-                                    <div class="d-flex flex-wrap gap-2" id="admin-audit-filter-bar">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary active admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="all">
-                                            All Records
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="day">
-                                            Day
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="month">
-                                            Month
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="year">
-                                            Year
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary admin-order-filter-btn px-3 py-1.5 fw-semibold" style="border-radius: 8px;" data-audit-filter="range">
-                                            Custom Range
-                                        </button>
-                                    </div>
-                                </div>
+                            <!-- Actions Row -->
+                            <div class="d-flex justify-content-end mb-4">
                                 <button type="button" class="btn btn-emerald px-4 py-2 d-flex align-items-center gap-2 shadow-sm text-white fw-semibold" onclick="downloadSalesCSV()" style="background-color: #047857; border: none; border-radius: 8px; transition: background-color 0.2s;">
                                     <i class="bi bi-file-earmark-spreadsheet-fill fs-5"></i> Download Sales CSV
                                 </button>
