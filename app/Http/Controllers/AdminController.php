@@ -205,6 +205,237 @@ class AdminController extends Controller
         $yearlySalesAmount = Order::where('status', 'completed')->whereYear('created_at', now()->year)->sum('total_amount');
         $yearlyOrdersCount = Order::where('status', 'completed')->whereYear('created_at', now()->year)->count();
 
+        // --- AI PREDICTIVE INSIGHTS CALCULATIONS ---
+
+        // 1. Market Basket Analysis (Product Pairings)
+        $orderItemsByOrder = DB::table('order_items')
+            ->join('food_items', 'order_items.food_item_id', '=', 'food_items.id')
+            ->select('order_id', 'food_items.name')
+            ->get()
+            ->groupBy('order_id');
+
+        $pairCounts = [];
+        $itemCounts = [];
+        foreach ($orderItemsByOrder as $orderId => $items) {
+            $uniqueNames = $items->pluck('name')->unique()->values()->toArray();
+            foreach ($uniqueNames as $name) {
+                $itemCounts[$name] = ($itemCounts[$name] ?? 0) + 1;
+            }
+            $count = count($uniqueNames);
+            for ($i = 0; $i < $count; $i++) {
+                for ($j = $i + 1; $j < $count; $j++) {
+                    $itemA = $uniqueNames[$i];
+                    $itemB = $uniqueNames[$j];
+                    
+                    $key1 = "{$itemA} & {$itemB}";
+                    $key2 = "{$itemB} & {$itemA}";
+                    $pairCounts[$key1] = ($pairCounts[$key1] ?? 0) + 1;
+                    $pairCounts[$key2] = ($pairCounts[$key2] ?? 0) + 1;
+                }
+            }
+        }
+
+        $recommendations = [];
+        foreach ($pairCounts as $pair => $count) {
+            [$itemA, $itemB] = explode(' & ', $pair);
+            $confidence = $itemCounts[$itemA] > 0 ? ($count / $itemCounts[$itemA]) * 100 : 0;
+            if ($confidence >= 25 && $itemCounts[$itemA] >= 2) {
+                $recommendations[] = (object)[
+                    'item_a' => $itemA,
+                    'item_b' => $itemB,
+                    'confidence' => round($confidence, 1),
+                    'count' => $count
+                ];
+            }
+        }
+        usort($recommendations, fn($a, $b) => $b->confidence <=> $a->confidence);
+        $topPairings = array_slice($recommendations, 0, 5);
+
+        // 2. Sales & Revenue Trend Forecasting (Demand Prediction)
+        $driver = DB::connection()->getDriverName();
+        if ($driver === 'sqlite') {
+            $dailyRevenueQuery = Order::where('status', 'completed')
+                ->where('created_at', '>=', now()->subDays(14))
+                ->select(DB::raw('date(created_at) as date'), DB::raw('SUM(total_amount) as total'))
+                ->groupBy('date')
+                ->get()
+                ->pluck('total', 'date')
+                ->toArray();
+        } elseif ($driver === 'pgsql') {
+            $dailyRevenueQuery = Order::where('status', 'completed')
+                ->where('created_at', '>=', now()->subDays(14))
+                ->select(DB::raw('CAST(created_at AS DATE) as date'), DB::raw('SUM(total_amount) as total'))
+                ->groupBy(DB::raw('CAST(created_at AS DATE)'))
+                ->get()
+                ->pluck('total', 'date')
+                ->toArray();
+        } else {
+            $dailyRevenueQuery = Order::where('status', 'completed')
+                ->where('created_at', '>=', now()->subDays(14))
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(total_amount) as total'))
+                ->groupBy('date')
+                ->get()
+                ->pluck('total', 'date')
+                ->toArray();
+        }
+
+        $n = 14;
+        $x = [];
+        $y = [];
+        for ($i = 0; $i < $n; $i++) {
+            $dateStr = now()->subDays($n - 1 - $i)->format('Y-m-d');
+            $x[] = $i + 1;
+            $y[] = isset($dailyRevenueQuery[$dateStr]) ? (float)$dailyRevenueQuery[$dateStr] : 0.0;
+        }
+
+        $sumX = array_sum($x);
+        $sumY = array_sum($y);
+        $sumXX = 0;
+        $sumXY = 0;
+        for ($i = 0; $i < $n; $i++) {
+            $sumXX += $x[$i] * $x[$i];
+            $sumXY += $x[$i] * $y[$i];
+        }
+
+        $denominator = ($n * $sumXX) - ($sumX * $sumX);
+        if ($denominator != 0) {
+            $m = (($n * $sumXY) - ($sumX * $sumY)) / $denominator;
+            $c = ($sumY - ($m * $sumX)) / $n;
+        } else {
+            $m = 0;
+            $c = $sumY > 0 ? $sumY / $n : 0;
+        }
+
+        // Get start of current week (Monday) and start of previous week (Monday)
+        $startOfThisWeek = now()->startOfWeek(\Carbon\Carbon::MONDAY);
+        $startOfLastWeek = $startOfThisWeek->copy()->subWeek();
+
+        // 1. Generate actual sales for previous week (Monday to Sunday)
+        $lastWeekOrders = Order::where('status', 'completed')
+            ->where('created_at', '>=', $startOfLastWeek->copy()->startOfDay())
+            ->where('created_at', '<=', $startOfLastWeek->copy()->addDays(6)->endOfDay())
+            ->get();
+
+        $lastWeekSalesByDay = array_fill(0, 7, 0.0);
+        foreach ($lastWeekOrders as $order) {
+            $dayOfWeek = (int)$order->created_at->format('N'); // 1 (Mon) to 7 (Sun)
+            $lastWeekSalesByDay[$dayOfWeek - 1] += (float)$order->total_amount;
+        }
+
+        $actualSales = [];
+        for ($i = 0; $i < 7; $i++) {
+            $date = $startOfLastWeek->copy()->addDays($i);
+            $actualSales[] = (object)[
+                'date' => $date->format('D (d M)'), // e.g. Mon (06 Jul)
+                'amount' => round($lastWeekSalesByDay[$i], 2)
+            ];
+        }
+
+        // 2. Generate sales forecast for current week (Monday to Sunday)
+        $historyStart = now()->subDays(14)->startOfDay();
+        $salesForecast = [];
+        for ($i = 0; $i < 7; $i++) {
+            $date = $startOfThisWeek->copy()->addDays($i);
+            $diffDays = $historyStart->diffInDays($date) + 1;
+            
+            $forecastVal = ($m * $diffDays) + $c;
+            if ($forecastVal < 0) $forecastVal = $n > 0 ? max(0, $sumY / $n) : 0;
+            
+            $salesForecast[] = (object)[
+                'date' => $date->format('D (d M)'), // e.g. Mon (13 Jul)
+                'amount' => round($forecastVal, 2)
+            ];
+        }
+
+        // Top 5 selling items query
+        $top5Selling = DB::table('order_items')
+            ->join('food_items', 'order_items.food_item_id', '=', 'food_items.id')
+            ->select('food_items.name', DB::raw('SUM(order_items.quantity) as total_qty'))
+            ->groupBy('food_items.id', 'food_items.name')
+            ->orderBy('total_qty', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Bottom 5 selling items query
+        $bottom5Selling = DB::table('food_items')
+            ->leftJoin('order_items', 'food_items.id', '=', 'order_items.food_item_id')
+            ->select('food_items.name', DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_qty'))
+            ->groupBy('food_items.id', 'food_items.name')
+            ->orderBy('total_qty', 'asc')
+            ->limit(5)
+            ->get();
+
+        // 3. Busy Hour / Kitchen Prep Delays
+        $completedOrders = Order::where('status', 'completed')
+            ->whereNotNull('created_at')
+            ->whereNotNull('updated_at')
+            ->get();
+
+        $hourlyPrepTimes = [];
+        $hourlyCounts = [];
+        foreach ($completedOrders as $order) {
+            $hour = (int)$order->created_at->format('H');
+            $prepTimeMinutes = $order->created_at->diffInMinutes($order->updated_at);
+            if ($prepTimeMinutes > 0 && $prepTimeMinutes < 120) {
+                $hourlyPrepTimes[$hour] = ($hourlyPrepTimes[$hour] ?? 0) + $prepTimeMinutes;
+                $hourlyCounts[$hour] = ($hourlyCounts[$hour] ?? 0) + 1;
+            }
+        }
+
+        $busyHourStaffing = [];
+        foreach ($hourlyPrepTimes as $hour => $totalMinutes) {
+            $count = $hourlyCounts[$hour];
+            $avg = $count > 0 ? $totalMinutes / $count : 0;
+            
+            $prepTimeLabel = round($avg) . " mins";
+            $recommendation = "Normal Speed";
+            $statusColor = "badge bg-success-subtle text-success border border-success-subtle px-2 py-1 rounded-pill";
+            if ($avg > 15 && $count >= 2) {
+                $recommendation = "Critical Delay - Add Staff";
+                $statusColor = "badge bg-danger-subtle text-danger border border-danger-subtle px-2 py-1 rounded-pill fw-bold";
+            } elseif ($avg > 10 && $count >= 2) {
+                $recommendation = "Slow - Monitor Kitchen";
+                $statusColor = "badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 rounded-pill";
+            }
+            
+            $busyHourStaffing[] = (object)[
+                'hour' => sprintf('%02d:00 - %02d:00', $hour, ($hour + 1) % 24),
+                'avg_prep_time' => $prepTimeLabel,
+                'orders_count' => $count,
+                'recommendation' => $recommendation,
+                'status_color' => $statusColor
+            ];
+        }
+        usort($busyHourStaffing, fn($a, $b) => $b->orders_count <=> $a->orders_count);
+        $busyHourStaffing = array_slice($busyHourStaffing, 0, 5);
+
+        // 4. Customer Retention Segmentation
+        $customersData = DB::table('orders')
+            ->whereNotNull('contact_number')
+            ->where('contact_number', '!=', '')
+            ->select('customer_name', 'contact_number', DB::raw('MAX(created_at) as last_visit'), DB::raw('COUNT(*) as total_orders'), DB::raw('SUM(total_amount) as total_spend'))
+            ->groupBy('customer_name', 'contact_number')
+            ->get();
+
+        $customerSegments = [
+            'champions' => [],
+            'attention' => [],
+            'at_risk' => []
+        ];
+
+        foreach ($customersData as $c) {
+            $lastVisitDate = \Carbon\Carbon::parse($c->last_visit);
+            $daysSinceLastVisit = $lastVisitDate->diffInDays(now());
+            
+            if ($daysSinceLastVisit <= 7 && $c->total_orders >= 3) {
+                $customerSegments['champions'][] = $c;
+            } elseif ($daysSinceLastVisit > 7 && $daysSinceLastVisit <= 30 && $c->total_orders >= 1) {
+                $customerSegments['attention'][] = $c;
+            } elseif ($daysSinceLastVisit > 30) {
+                $customerSegments['at_risk'][] = $c;
+            }
+        }
+
         $modules = \App\Models\Module::visible()->whereNull('parent_id')->orderBy('order_weight')->get();
         $allSettledOrders = Order::where('payment_status', 'paid')->with(['orderItems.foodItem', 'table'])->latest()->get();
 
@@ -246,7 +477,14 @@ class AdminController extends Controller
             'yearlyOrdersCount',
             'pendingUsers',
             'modules',
-            'allSettledOrders'
+            'allSettledOrders',
+            'topPairings',
+            'salesForecast',
+            'busyHourStaffing',
+            'customerSegments',
+            'actualSales',
+            'top5Selling',
+            'bottom5Selling'
         ));
     }
 

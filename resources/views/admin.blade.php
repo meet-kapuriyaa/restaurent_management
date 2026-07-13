@@ -586,6 +586,39 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Item-Wise Sales Performance Row -->
+                <div class="row g-4 mb-5">
+                    <div class="col-lg-6">
+                        <div class="card-admin p-4">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-graph-up-arrow text-success me-2" style="color: #15803d;"></i>Top 5 Bestselling Food Items</h5>
+                            <div style="height: 250px; position: relative;">
+                                <canvas id="dashboardTop5Chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card-admin p-4">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-graph-down-arrow text-danger me-2"></i>Bottom 5 Lowest Selling Food Items</h5>
+                            <div style="height: 250px; position: relative;">
+                                <canvas id="dashboardBottom5Chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actual vs Expected Weekday Sales Comparison Row -->
+                <div class="row g-4 mb-5">
+                    <div class="col-lg-12">
+                        <div class="card-admin p-4">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-graph-up text-indigo me-2" style="color: #4f46e5;"></i>Actual vs. Expected Weekday Sales Comparison</h5>
+                            <div style="height: 300px; position: relative;">
+                                <canvas id="dashboardForecastChart"></canvas>
+                            </div>
+                            <p class="text-secondary small mt-3 mb-0">Direct weekday-by-weekday comparison of actual sales from the past 7 days (solid green line) vs. projected sales for the upcoming 7 days (dashed purple line) calculated using linear regression.</p>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Pane 2: Menu Management -->
@@ -1448,7 +1481,6 @@
                 </div>
             </div>
             @endif
-
         </div>
     </div>
 
@@ -3274,6 +3306,173 @@
                 });
             } catch (e) {
                 console.error("Failed to initialize hourlySalesChart:", e);
+            }
+
+            // AI PREDICTIVE INSIGHTS CHARTS INITIALIZATION
+            try {
+                const actualSalesData = @json($actualSales) || [];
+                const forecastSalesData = @json($salesForecast) || [];
+
+                // Extract weekday names and dates (e.g. Mon (13 Jul)) for X-axis labels
+                const comparisonLabels = forecastSalesData.map(d => d.date);
+
+                // Map the past week's actual sales to align with these weekdays
+                const actualAmounts = forecastSalesData.map(f => {
+                    const weekday = f.date.substring(0, 3); // Extract 'Mon', 'Tue', etc.
+                    const match = actualSalesData.find(a => a.date.substring(0, 3) === weekday);
+                    return match ? parseFloat(match.amount) : 0;
+                });
+
+                // Map the future expected sales
+                const expectedAmounts = forecastSalesData.map(d => parseFloat(d.amount) || 0);
+
+                const top5Data = @json($top5Selling) || [];
+                const top5Labels = top5Data.map(d => d.name);
+                const top5Values = top5Data.map(d => parseInt(d.total_qty) || 0);
+
+                const bottom5Data = @json($bottom5Selling) || [];
+                const bottom5Labels = bottom5Data.map(d => d.name);
+                const bottom5Values = bottom5Data.map(d => parseInt(d.total_qty) || 0);
+
+                // 1. Top 5 Bestselling Food Items Horizontal Bar Chart for main dashboard Analytics Hub
+                const ctxDashTop5 = document.getElementById('dashboardTop5Chart').getContext('2d');
+                new Chart(ctxDashTop5, {
+                    type: 'bar',
+                    data: {
+                        labels: top5Labels,
+                        datasets: [{
+                            label: 'Quantity Sold',
+                            data: top5Values,
+                            backgroundColor: 'rgba(34, 197, 94, 0.85)',
+                            borderColor: '#22c55e',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                grid: { color: '#f1f5f9' }
+                            },
+                            y: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+
+                // 2. Bottom 5 Lowest Selling Food Items Horizontal Bar Chart for main dashboard Analytics Hub
+                const ctxDashBottom5 = document.getElementById('dashboardBottom5Chart').getContext('2d');
+                new Chart(ctxDashBottom5, {
+                    type: 'bar',
+                    data: {
+                        labels: bottom5Labels,
+                        datasets: [{
+                            label: 'Quantity Sold',
+                            data: bottom5Values,
+                            backgroundColor: 'rgba(239, 68, 68, 0.85)',
+                            borderColor: '#ef4444',
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                grid: { color: '#f1f5f9' },
+                                ticks: { stepSize: 1 }
+                            },
+                            y: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+
+                // 3. Mapped Weekday Actual vs Expected Sales Comparison Chart for main dashboard Analytics Hub
+                const ctxDashForecast = document.getElementById('dashboardForecastChart').getContext('2d');
+                new Chart(ctxDashForecast, {
+                    type: 'line',
+                    data: {
+                        labels: comparisonLabels,
+                        datasets: [
+                            {
+                                label: 'Actual Sales (Last Week) (₹)',
+                                data: actualAmounts,
+                                borderColor: '#22c55e', // Green
+                                backgroundColor: 'rgba(34, 197, 94, 0.05)',
+                                borderWidth: 3,
+                                pointBackgroundColor: '#22c55e',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                                fill: true,
+                                tension: 0.35
+                            },
+                            {
+                                label: 'Expected Sales (Next Week) (₹)',
+                                data: expectedAmounts,
+                                borderColor: '#a855f7', // Purple
+                                backgroundColor: 'rgba(168, 85, 247, 0.05)',
+                                borderDash: [6, 6], // Dashed line for forecast
+                                borderWidth: 3,
+                                pointBackgroundColor: '#a855f7',
+                                pointBorderColor: '#ffffff',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                                fill: true,
+                                tension: 0.35
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: {
+                                    font: { weight: 'bold' }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#f1f5f9' },
+                                ticks: {
+                                    callback: function(value) {
+                                        return '₹' + value;
+                                    }
+                                }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+
+            } catch (e) {
+                console.error("Failed to initialize AI charts:", e);
             }
 
             // Add New Custom Role Action
