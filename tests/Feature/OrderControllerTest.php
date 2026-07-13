@@ -293,6 +293,44 @@ class OrderControllerTest extends TestCase
     }
 
     /**
+     * Test the pending orders ?mine=1 filter returns only orders placed by the current user.
+     */
+    public function test_pending_orders_mine_filter_returns_only_own_orders(): void
+    {
+        $item = FoodItem::create(['name' => 'Test Item', 'price' => 10.00, 'status' => 'available']);
+
+        // Order placed by waiterUser
+        $myOrder = Order::create([
+            'customer_name' => 'My Customer',
+            'contact_number' => '1111111111',
+            'total_amount' => 10.00,
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+            'user_id' => $this->waiterUser->id,
+        ]);
+
+        // Order placed by a different user (no user_id = system or another waiter)
+        $otherOrder = Order::create([
+            'customer_name' => 'Other Customer',
+            'contact_number' => '2222222222',
+            'total_amount' => 20.00,
+            'status' => 'pending',
+            'payment_status' => 'unpaid',
+            'user_id' => null,
+        ]);
+
+        // Without mine filter - should return both
+        $responseAll = $this->actingAs($this->waiterUser)->getJson(route('orders.pending'));
+        $responseAll->assertStatus(200)->assertJsonCount(2);
+
+        // With mine=1 - should return only mine
+        $responseMine = $this->actingAs($this->waiterUser)->getJson(route('orders.pending', ['mine' => 1]));
+        $responseMine->assertStatus(200)->assertJsonCount(1);
+        $responseMine->assertJsonFragment(['id' => $myOrder->id]);
+        $responseMine->assertJsonMissing(['id' => $otherOrder->id]);
+    }
+
+    /**
      * Test marking an order as delivered.
      */
     public function test_can_deliver_order(): void

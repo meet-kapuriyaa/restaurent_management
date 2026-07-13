@@ -195,25 +195,28 @@ class OrderController extends Controller
     }
 
     /**
-     * Retrieve all pending orders.
+     * Retrieve pending orders, optionally filtered to current user only.
      */
-    public function getPendingOrders()
+    public function getPendingOrders(Request $request)
     {
-        $pendingOrders = Order::with([
-            'orderItems' => function($query) {
-                $query->whereIn('status', ['pending', 'preparing'])->with('foodItem');
+        $query = Order::with([
+            'orderItems' => function($q) {
+                $q->whereIn('status', ['pending', 'preparing'])->with('foodItem');
             },
             'table'
         ])
             ->whereDate('created_at', \Carbon\Carbon::today())
-            ->where(function($query) {
-                $query->where('payment_status', '!=', 'paid')
-                      ->orWhere('status', 'completed');
-            })
-            ->latest()
-            ->get();
+            ->where(function($q) {
+                $q->where('payment_status', '!=', 'paid')
+                  ->orWhere('status', 'completed');
+            });
 
-        return response()->json($pendingOrders);
+        // Filter to only this waiter's orders if ?mine=1 is passed
+        if ($request->boolean('mine')) {
+            $query->where('user_id', Auth::id());
+        }
+
+        return response()->json($query->latest()->get());
     }
 
     /**

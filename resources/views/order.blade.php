@@ -519,9 +519,19 @@
                             <span class="spinner-grow spinner-grow-sm text-success" style="width: 6px; height: 6px;" role="status"></span> Live Sync
                         </span>
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-orders-btn">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Logs
-                    </button>
+                    <div class="d-flex align-items-center gap-3">
+                        {{-- My Orders Toggle --}}
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="small fw-semibold text-secondary" id="my-orders-toggle-label">All Orders</span>
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch" id="my-orders-toggle" title="Show only my orders">
+                            </div>
+                            <span class="small fw-semibold" id="my-orders-toggle-my-label" style="color: #15803d;">My Orders</span>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="refresh-orders-btn">
+                            <i class="bi bi-arrow-clockwise me-1"></i> Refresh Logs
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Status Filtering Tabs -->
@@ -1417,9 +1427,11 @@
             // Function to load and render live pending orders
             function loadPendingOrders() {
                 const $tbody = $('#pending-orders-tbody');
+                const isMineOnly = $('#my-orders-toggle').is(':checked');
+                const apiUrl = "{{ route('orders.pending') }}" + (isMineOnly ? '?mine=1' : '');
                 
                 $.ajax({
-                    url: "{{ route('orders.pending') }}",
+                    url: apiUrl,
                     type: 'GET',
                     success: function(orders) {
                         $tbody.empty();
@@ -1448,6 +1460,19 @@
                     }
                 });
             }
+
+            // Restore My Orders toggle state from sessionStorage
+            const savedMineFilter = sessionStorage.getItem('orders_mine_filter');
+            if (savedMineFilter === '1') {
+                $('#my-orders-toggle').prop('checked', true);
+            }
+
+            // Handle My Orders toggle change
+            $('#my-orders-toggle').on('change', function() {
+                const isChecked = $(this).is(':checked');
+                sessionStorage.setItem('orders_mine_filter', isChecked ? '1' : '0');
+                loadPendingOrders();
+            });
 
             // Initialize Laravel Echo client for real-time WebSocket listening
             try {
