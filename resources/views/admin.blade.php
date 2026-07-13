@@ -2507,6 +2507,9 @@
                                 // Reset the form back to ADD mode
                                 $('#cancel-category-edit-btn').trigger('click');
                                 
+                                // Refresh category filter bar on dashboard
+                                refreshAdminCategoryFilterBar();
+                                
                                 // Show success toast
                                 const Toast = Swal.mixin({
                                     toast: true,
@@ -2557,6 +2560,9 @@
                                     <option value="${cat.id}">${cat.name}</option>
                                 `);
                                 
+                                // Refresh category filter bar on dashboard
+                                refreshAdminCategoryFilterBar();
+
                                 // Show success toast
                                 const Toast = Swal.mixin({
                                     toast: true,
@@ -2615,6 +2621,9 @@
                                     const row = editBtn.closest('tr');
                                     row.find('td').eq(4).html('<span class="badge bg-secondary-subtle text-secondary">Uncategorized</span>');
                                 });
+
+                                // Refresh category filter bar on dashboard
+                                refreshAdminCategoryFilterBar();
 
                                 const Toast = Swal.mixin({
                                     toast: true,
@@ -2692,6 +2701,7 @@
                             timer: 1500
                         });
                         Toast.fire({ icon: 'success', title: 'Category order updated!' });
+                        refreshAdminCategoryFilterBar();
                     },
                     error: function(xhr) {
                         Swal.fire({
@@ -2701,6 +2711,30 @@
                         });
                     }
                 });
+            }
+
+            function refreshAdminCategoryFilterBar() {
+                const activeCategory = $('#admin-category-filter-bar .admin-category-filter-btn.active').data('category') || 'all';
+                let html = `
+                    <button type="button" class="btn btn-sm btn-outline-secondary admin-category-filter-btn px-3 py-1.5 fw-semibold ${activeCategory === 'all' ? 'active' : ''}" style="border-radius: 8px;" data-category="all">
+                        All
+                    </button>
+                `;
+                $('#categories-sortable-tbody .draggable-cat-row').each(function() {
+                    const catId = $(this).data('cat-id');
+                    const catName = $(this).find('.category-name-text').text().trim();
+                    html += `
+                        <button type="button" class="btn btn-sm btn-outline-secondary admin-category-filter-btn px-3 py-1.5 fw-semibold ${String(activeCategory) === String(catId) ? 'active' : ''}" style="border-radius: 8px;" data-category="${catId}">
+                            ${catName}
+                        </button>
+                    `;
+                });
+                html += `
+                    <button type="button" class="btn btn-sm btn-outline-secondary admin-category-filter-btn px-3 py-1.5 fw-semibold ${activeCategory === 'uncategorized' ? 'active' : ''}" style="border-radius: 8px;" data-category="uncategorized">
+                        Uncategorized
+                    </button>
+                `;
+                $('#admin-category-filter-bar').html(html);
             }
 
             // Edit Category click handler
