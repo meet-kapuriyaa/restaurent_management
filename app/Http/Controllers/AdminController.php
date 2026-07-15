@@ -310,24 +310,25 @@ class AdminController extends Controller
         $startOfThisWeek = now()->startOfWeek(\Carbon\Carbon::MONDAY);
         $startOfLastWeek = $startOfThisWeek->copy()->subWeek();
 
-        // 1. Generate actual sales for previous week (Monday to Sunday)
-        $lastWeekOrders = Order::where('status', 'completed')
-            ->where('created_at', '>=', $startOfLastWeek->copy()->startOfDay())
-            ->where('created_at', '<=', $startOfLastWeek->copy()->addDays(6)->endOfDay())
+        // 1. Generate actual sales for the current week (Monday to Sunday)
+        $thisWeekOrders = Order::where('status', 'completed')
+            ->where('created_at', '>=', $startOfThisWeek->copy()->startOfDay())
+            ->where('created_at', '<=', $startOfThisWeek->copy()->addDays(6)->endOfDay())
             ->get();
 
-        $lastWeekSalesByDay = array_fill(0, 7, 0.0);
-        foreach ($lastWeekOrders as $order) {
+        $thisWeekSalesByDay = array_fill(0, 7, 0.0);
+        foreach ($thisWeekOrders as $order) {
             $dayOfWeek = (int)$order->created_at->format('N'); // 1 (Mon) to 7 (Sun)
-            $lastWeekSalesByDay[$dayOfWeek - 1] += (float)$order->total_amount;
+            $thisWeekSalesByDay[$dayOfWeek - 1] += (float)$order->total_amount;
         }
 
         $actualSales = [];
         for ($i = 0; $i < 7; $i++) {
-            $date = $startOfLastWeek->copy()->addDays($i);
+            $date = $startOfThisWeek->copy()->addDays($i);
+            $isFuture = $date->isFuture() && !$date->isToday();
             $actualSales[] = (object)[
-                'date' => $date->format('D (d M)'), // e.g. Mon (06 Jul)
-                'amount' => round($lastWeekSalesByDay[$i], 2)
+                'date' => $date->format('D (d M)'), // e.g. Mon (13 Jul)
+                'amount' => $isFuture ? null : round($thisWeekSalesByDay[$i], 2)
             ];
         }
 
@@ -344,6 +345,43 @@ class AdminController extends Controller
             $salesForecast[] = (object)[
                 'date' => $date->format('D (d M)'), // e.g. Mon (13 Jul)
                 'amount' => round($forecastVal, 2)
+            ];
+        }
+
+        // 16-day completed orders count query (database-agnostic)
+        if ($driver === 'sqlite') {
+            $dailyOrdersQuery = Order::where('status', 'completed')
+                ->where('created_at', '>=', now()->subDays(16)->startOfDay())
+                ->select(DB::raw('date(created_at) as date'), DB::raw('COUNT(*) as count'))
+                ->groupBy('date')
+                ->get()
+                ->pluck('count', 'date')
+                ->toArray();
+        } elseif ($driver === 'pgsql') {
+            $dailyOrdersQuery = Order::where('status', 'completed')
+                ->where('created_at', '>=', now()->subDays(16)->startOfDay())
+                ->select(DB::raw('CAST(created_at AS DATE) as date'), DB::raw('COUNT(*) as count'))
+                ->groupBy(DB::raw('CAST(created_at AS DATE)'))
+                ->get()
+                ->pluck('count', 'date')
+                ->toArray();
+        } else {
+            $dailyOrdersQuery = Order::where('status', 'completed')
+                ->where('created_at', '>=', now()->subDays(16)->startOfDay())
+                ->select(DB::raw('DATE(created_at) as date'), DB::raw('COUNT(*) as count'))
+                ->groupBy('date')
+                ->get()
+                ->pluck('count', 'date')
+                ->toArray();
+        }
+
+        $completedOrdersCountHistory = [];
+        for ($i = 0; $i < 16; $i++) {
+            $date = now()->subDays(15 - $i);
+            $dateStr = $date->format('Y-m-d');
+            $completedOrdersCountHistory[] = (object)[
+                'date' => $date->format('d M'), // e.g. 14 Jul
+                'count' => isset($dailyOrdersQuery[$dateStr]) ? (int)$dailyOrdersQuery[$dateStr] : 0
             ];
         }
 
@@ -370,6 +408,50 @@ class AdminController extends Controller
             ->whereNotNull('created_at')
             ->whereNotNull('updated_at')
             ->get();
+
+        // --- Live KPI Performance calculations ---
+        $totalCompletedOrders = count($completedOrders);
+        $averageOrderValue = 0.0;
+        $averagePrepTime = 0;
+        $dineInPercentage = 0;
+        $takeawayPercentage = 0;
+        $busiestHour = "N/A";
+
+        if ($totalCompletedOrders > 0) {
+            $totalSales = 0.0;
+            $dineInCount = 0;
+            $totalPrepMins = 0;
+            $validPrepCount = 0;
+            $hourlyCountsGroup = [];
+
+            foreach ($completedOrders as $order) {
+                $totalSales += (float)$order->total_amount;
+                
+                if ($order->table_id !== null) {
+                    $dineInCount++;
+                }
+
+                $prepTimeMins = $order->created_at->diffInMinutes($order->updated_at);
+                if ($prepTimeMins > 0 && $prepTimeMins < 120) {
+                    $totalPrepMins += $prepTimeMins;
+                    $validPrepCount++;
+                }
+
+                $hourStr = $order->created_at->format('H');
+                $hourlyCountsGroup[$hourStr] = ($hourlyCountsGroup[$hourStr] ?? 0) + 1;
+            }
+
+            $averageOrderValue = $totalSales / $totalCompletedOrders;
+            $dineInPercentage = round(($dineInCount / $totalCompletedOrders) * 100);
+            $takeawayPercentage = 100 - $dineInPercentage;
+            $averagePrepTime = $validPrepCount > 0 ? round($totalPrepMins / $validPrepCount) : 0;
+
+            if (count($hourlyCountsGroup) > 0) {
+                arsort($hourlyCountsGroup);
+                $peakHour = (int)key($hourlyCountsGroup);
+                $busiestHour = sprintf('%02d:00 - %02d:00', $peakHour, ($peakHour + 1) % 24);
+            }
+        }
 
         $hourlyPrepTimes = [];
         $hourlyCounts = [];
@@ -484,7 +566,13 @@ class AdminController extends Controller
             'customerSegments',
             'actualSales',
             'top5Selling',
-            'bottom5Selling'
+            'bottom5Selling',
+            'completedOrdersCountHistory',
+            'averageOrderValue',
+            'averagePrepTime',
+            'dineInPercentage',
+            'takeawayPercentage',
+            'busiestHour'
         ));
     }
 

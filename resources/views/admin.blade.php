@@ -394,7 +394,7 @@
                 <div class="row g-4 mb-5">
                     <!-- Card 1: Total Gross Sales -->
                     <div class="col-md-6 col-lg-3">
-                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0 !important;">
+                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0 !important; border-left: 5px solid #15803d !important;">
                             <div>
                                 <span class="text-secondary small fw-semibold uppercase tracking-wider block mb-1">TOTAL GROSS SALES</span>
                                 <h3 id="stat-total-revenue" class="fw-bold mb-0" style="color: #166534 !important;" data-amount="{{ $totalRevenue }}">₹{{ number_format($totalRevenue, 2) }}</h3>
@@ -409,7 +409,7 @@
                     </div>
                     <!-- Card 2: Total Orders Filled -->
                     <div class="col-md-6 col-lg-3">
-                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd !important;">
+                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd !important; border-left: 5px solid #0284c7 !important;">
                             <div>
                                 <span class="text-secondary small fw-semibold uppercase tracking-wider block mb-1">TOTAL ORDERS FILLED</span>
                                 <h3 id="stat-total-orders" class="fw-bold mb-0" style="color: #075985 !important;">{{ $totalOrdersFilled }}</h3>
@@ -424,7 +424,7 @@
                     </div>
                     <!-- Card 3: Top Selling Item -->
                     <div class="col-md-6 col-lg-3">
-                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fcd34d !important;">
+                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fcd34d !important; border-left: 5px solid #d97706 !important;">
                             <div>
                                 <span class="text-secondary small fw-semibold uppercase tracking-wider block mb-1">TOP SELLING ITEM</span>
                                 <h3 class="fw-bold mb-0" style="color: #92400e !important; font-size: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;" title="{{ $topSellingName }} ({{ $topSellingQty }} sold)">{{ $topSellingName }} ({{ $topSellingQty }} sold)</h3>
@@ -437,7 +437,7 @@
                     </div>
                     <!-- Card 4: Lowest Selling Item -->
                     <div class="col-md-6 col-lg-3">
-                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 1px solid #fecaca !important;">
+                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%); border: 1px solid #fecaca !important; border-left: 5px solid #dc2626 !important;">
                             <div>
                                 <span class="text-secondary small fw-semibold uppercase tracking-wider block mb-1">LOWEST SELLING ITEM</span>
                                 <h3 class="fw-bold mb-0" style="color: #991b1b !important; font-size: 1.15rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px;" title="{{ $lowestSellingName }} ({{ $lowestSellingQty }} sold)">{{ $lowestSellingName }} ({{ $lowestSellingQty }} sold)</h3>
@@ -526,6 +526,70 @@
                     </div>
                 </div>
 
+                <!-- Live KPI Performance Row -->
+                <div class="row g-4 mb-5">
+                    <!-- KPI 1: Table Turnover Speed -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border: 1px solid #bbf7d0 !important; border-left: 5px solid #15803d !important;">
+                            <div>
+                                <span class="text-secondary small fw-semibold uppercase tracking-wider block mb-1">AVG PREP SPEED</span>
+                                <h3 class="fw-bold mb-0" style="color: #166534 !important;">{{ $averagePrepTime }} mins</h3>
+                                <div class="text-muted small fw-semibold mt-1">
+                                    Time from order to ready
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: #15803d; color: #fff;">
+                                <i class="bi bi-lightning-charge"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- KPI 2: Average Ticket Value -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 1px solid #bae6fd !important; border-left: 5px solid #0284c7 !important;">
+                            <div>
+                                <span class="text-secondary small fw-semibold uppercase tracking-wider block mb-1">AVG ORDER VALUE</span>
+                                <h3 class="fw-bold mb-0" style="color: #075985 !important;">₹{{ number_format($averageOrderValue, 2) }}</h3>
+                                <div class="text-muted small fw-semibold mt-1">
+                                    Average customer ticket spend
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: #0284c7; color: #fff;">
+                                <i class="bi bi-wallet2"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- KPI 3: Dine-In vs Takeaway split -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #fcd34d !important; border-left: 5px solid #d97706 !important;">
+                            <div>
+                                <span class="text-secondary small fw-semibold uppercase tracking-wider block mb-1">DINE-IN VS TAKEAWAY</span>
+                                <h3 class="fw-bold mb-0" style="color: #92400e !important;">{{ $dineInPercentage }}% / {{ $takeawayPercentage }}%</h3>
+                                <div class="text-muted small fw-semibold mt-1">
+                                    Order type percentage split
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: #d97706; color: #fff;">
+                                <i class="bi bi-shop"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- KPI 4: Peak Sales Hour -->
+                    <div class="col-md-6 col-lg-3">
+                        <div class="stat-card h-100" style="background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%); border: 1px solid #fbcfe8 !important; border-left: 5px solid #db2777 !important;">
+                            <div>
+                                <span class="text-secondary small fw-semibold uppercase tracking-wider block mb-1">PEAK SERVICE HOUR</span>
+                                <h3 class="fw-bold mb-0" style="color: #9d174d !important; font-size: 1.5rem; margin-top: 2px;">{{ $busiestHour }}</h3>
+                                <div class="text-muted small fw-semibold mt-1">
+                                    Busiest order time of day
+                                </div>
+                            </div>
+                            <div class="stat-icon" style="background: #db2777; color: #fff;">
+                                <i class="bi bi-clock-history"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Charts Section -->
                 <div class="row g-4 mb-5">
                     <div class="col-lg-7">
@@ -558,30 +622,21 @@
                     </div>
                     <div class="col-lg-6">
                         <div class="card-admin p-4" style="height: 100%;">
-                            <h5 class="fw-bold mb-3"><i class="bi bi-trophy-fill text-success me-2" style="color: #15803d;"></i>Top Staff/Waiter Performance</h5>
-                            <div class="table-responsive">
-                                <table class="table table-sm table-hover align-middle mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Waiter Name</th>
-                                            <th class="text-center">Orders Handled</th>
-                                            <th class="text-end">Revenue Generated</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @forelse($waiterPerformance as $performance)
-                                            <tr>
-                                                <td class="fw-semibold text-dark"><i class="bi bi-person-badge text-muted me-1"></i> {{ $performance->name }}</td>
-                                                <td class="text-center">{{ $performance->total_orders }}</td>
-                                                <td class="text-end fw-semibold text-success">₹{{ number_format($performance->total_revenue, 2) }}</td>
-                                            </tr>
-                                        @empty
-                                            <tr>
-                                                <td colspan="3" class="text-center py-4 text-secondary small">No waiter activity logged yet.</td>
-                                            </tr>
-                                        @endforelse
-                                    </tbody>
-                                </table>
+                            <h5 class="fw-bold mb-3"><i class="bi bi-calendar3-event text-primary me-2" style="color: #3b82f6;"></i>16-Day Completed Orders Grid</h5>
+                            <div class="d-grid" style="grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                                @foreach($completedOrdersCountHistory as $history)
+                                    @php
+                                        $hasOrders = $history->count > 0;
+                                        $bgStyle = $hasOrders ? 'background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #93c5fd !important;' : 'background: #f8fafc; border-color: #e2e8f0 !important;';
+                                        $textStyle = $hasOrders ? 'color: #1e40af;' : 'color: #64748b;';
+                                        $countStyle = $hasOrders ? 'color: #1d4ed8; font-weight: 800;' : 'color: #94a3b8; font-weight: 700;';
+                                    @endphp
+                                    <div class="p-2 border rounded text-center shadow-sm d-flex flex-column justify-content-center align-items-center" style="{{ $bgStyle }} border-radius: 10px; transition: transform 0.15s; cursor: default;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                                        <span class="small fw-semibold mb-0" style="{{ $textStyle }} font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px;">{{ $history->date }}</span>
+                                        <h5 class="my-0.5" style="{{ $countStyle }} font-size: 1.1rem; line-height: 1.2;">{{ $history->count }}</h5>
+                                        <span class="text-muted" style="font-size: 0.55rem;">orders</span>
+                                    </div>
+                                @endforeach
                             </div>
                         </div>
                     </div>
@@ -615,7 +670,40 @@
                             <div style="height: 300px; position: relative;">
                                 <canvas id="dashboardForecastChart"></canvas>
                             </div>
-                            <p class="text-secondary small mt-3 mb-0">Direct weekday-by-weekday comparison of actual sales from the past 7 days (solid green line) vs. projected sales for the upcoming 7 days (dashed purple line) calculated using linear regression.</p>
+                            <p class="text-secondary small mt-3 mb-0">Direct comparison of actual sales from the current week (solid green line) vs. projected sales for the current week (dashed purple line) calculated using linear regression.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Top Staff/Waiter Performance Row (Moved to bottom) -->
+                <div class="row g-4 mb-5">
+                    <div class="col-lg-12">
+                        <div class="card-admin p-4">
+                            <h5 class="fw-bold mb-3"><i class="bi bi-trophy-fill text-success me-2" style="color: #15803d;"></i>Top Staff/Waiter Performance</h5>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="ps-3 py-3">Waiter Name</th>
+                                            <th class="text-center py-3">Orders Handled</th>
+                                            <th class="text-end pe-3 py-3">Revenue Generated</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @forelse($waiterPerformance as $performance)
+                                            <tr>
+                                                <td class="ps-3 py-3 fw-bold text-dark"><i class="bi bi-person-badge text-muted me-2"></i>{{ $performance->name }}</td>
+                                                <td class="text-center py-3 fw-semibold">{{ $performance->total_orders }} orders</td>
+                                                <td class="text-end pe-3 py-3 fw-bold text-success">₹{{ number_format($performance->total_revenue, 2) }}</td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="3" class="text-center py-4 text-secondary small">No waiter activity logged yet.</td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -3316,14 +3404,8 @@
                 // Extract weekday names and dates (e.g. Mon (13 Jul)) for X-axis labels
                 const comparisonLabels = forecastSalesData.map(d => d.date);
 
-                // Map the past week's actual sales to align with these weekdays
-                const actualAmounts = forecastSalesData.map(f => {
-                    const weekday = f.date.substring(0, 3); // Extract 'Mon', 'Tue', etc.
-                    const match = actualSalesData.find(a => a.date.substring(0, 3) === weekday);
-                    return match ? parseFloat(match.amount) : 0;
-                });
-
-                // Map the future expected sales
+                // Map actual and expected sales directly for this week
+                const actualAmounts = actualSalesData.map(d => d.amount === null ? null : parseFloat(d.amount));
                 const expectedAmounts = forecastSalesData.map(d => parseFloat(d.amount) || 0);
 
                 const top5Data = @json($top5Selling) || [];
@@ -3411,7 +3493,7 @@
                         labels: comparisonLabels,
                         datasets: [
                             {
-                                label: 'Actual Sales (Last Week) (₹)',
+                                label: 'Actual Sales (This Week) (₹)',
                                 data: actualAmounts,
                                 borderColor: '#22c55e', // Green
                                 backgroundColor: 'rgba(34, 197, 94, 0.05)',
@@ -3424,7 +3506,7 @@
                                 tension: 0.35
                             },
                             {
-                                label: 'Expected Sales (Next Week) (₹)',
+                                label: 'Expected Sales (This Week) (₹)',
                                 data: expectedAmounts,
                                 borderColor: '#a855f7', // Purple
                                 backgroundColor: 'rgba(168, 85, 247, 0.05)',
